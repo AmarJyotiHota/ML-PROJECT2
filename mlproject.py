@@ -1,4 +1,4 @@
-# app.py (fixed version with corrected EDA plots)
+# app.py (fixed version with proper HTML rendering)
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -25,7 +25,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS (keeping only essential styles to avoid conflicts)
+# Custom CSS
 def load_css():
     css = """
     <style>
@@ -258,13 +258,6 @@ def load_css():
             font-size: 1.05rem;
             font-weight: 500;
             color: #fff;
-            margin-bottom: 3px;
-        }
-        
-        .chart-subtitle {
-            font-family: 'DM Mono', monospace;
-            font-size: .58rem;
-            color: var(--text-muted);
             margin-bottom: 12px;
         }
         
@@ -634,6 +627,104 @@ def load_css():
             color: var(--teal);
         }
         
+        /* Full Metrics Table Styles */
+        .full-metrics-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'DM Mono', monospace;
+        }
+        
+        .full-metrics-table th {
+            font-size: .62rem;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding: 0 12px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-weight: 400;
+            white-space: nowrap;
+        }
+        
+        .full-metrics-table td {
+            font-size: .78rem;
+            color: var(--text-dim);
+            padding: 11px 12px;
+            border-bottom: 1px solid rgba(0,200,200,.05);
+        }
+        
+        .full-metrics-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .full-metrics-table .best-row td {
+            color: var(--teal);
+        }
+        
+        .gap-val {
+            color: var(--amber);
+        }
+        
+        .gap-val.red {
+            color: var(--red);
+        }
+        
+        .status-tag {
+            font-size: .6rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            letter-spacing: .06em;
+            font-weight: 500;
+            display: inline-block;
+        }
+        
+        .status-tag.ok {
+            background: rgba(61,232,158,.1);
+            color: var(--green);
+            border: 1px solid rgba(61,232,158,.2);
+        }
+        
+        .status-tag.overfit {
+            background: rgba(244,95,111,.1);
+            color: var(--red);
+            border: 1px solid rgba(244,95,111,.2);
+        }
+        
+        .status-tag.best {
+            background: rgba(0,200,200,.12);
+            color: var(--teal);
+            border: 1px solid rgba(0,200,200,.25);
+        }
+        
+        .metric-bar-wrap {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .mini-bar {
+            flex: 1;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--bg3);
+            overflow: hidden;
+        }
+        
+        .mini-fill {
+            height: 100%;
+            border-radius: 2px;
+            background: linear-gradient(90deg, var(--teal), #007faa);
+        }
+        
+        .mini-val {
+            font-family: 'DM Mono', monospace;
+            font-size: .7rem;
+            color: var(--text-dim);
+            width: 36px;
+            flex-shrink: 0;
+        }
+        
         footer {
             border-top: 1px solid var(--border);
             padding: 24px 0 0;
@@ -815,7 +906,7 @@ cat_features = [
     'Chemotherapy', 'Family_History'
 ]
 
-# Create EDA plots - Simplified and fixed version
+# Create EDA plots
 def create_eda_plots(df):
     plots = []
     
@@ -1036,21 +1127,20 @@ def create_eda_plots(df):
     plt.tight_layout()
     plots.append(fig14)
     
-    # 15. Feature Importance - FIXED: using matplotlib colors instead of CSS rgba strings
+    # 15. Feature Importance
     fig15, ax15 = plt.subplots(figsize=(5, 4))
     features = ['Tumor Size', 'Growth Rate', 'Age', 'Histology', 'Stage', 'Location', 
                 'Symptoms', 'Gender', 'Surgery', 'Radiation', 'Chemo', 'Family Hx']
     importance = [0.243, 0.198, 0.167, 0.131, 0.108, 0.079, 0.074, 0.058, 0.042, 0.038, 0.032, 0.030]
     
-    # Create colors using matplotlib-compatible format
     colors = []
     for x in importance:
         if x > 0.18:
-            colors.append('#00c8c8')  # teal
+            colors.append('#00c8c8')
         elif x > 0.10:
-            colors.append('#4a9eff')  # blue
+            colors.append('#4a9eff')
         else:
-            colors.append('#6b99b5')  # light blue
+            colors.append('#6b99b5')
     
     y_pos = np.arange(len(features))
     ax15.barh(y_pos, importance, color=colors)
@@ -1655,10 +1745,11 @@ def main():
                             </div>
                             ''', unsafe_allow_html=True)
             
-            # Full Metrics Table
+            # Full Metrics Table - Fixed: Using st.markdown with proper HTML
             st.markdown('<div class="chart-section-label">Full Metrics Table</div>', unsafe_allow_html=True)
             
-            metrics_html = '''
+            # Build the HTML table string
+            table_html = '''
             <div class="card" style="margin-bottom:28px;">
                 <div class="card-body">
                     <table class="full-metrics-table">
@@ -1688,9 +1779,10 @@ def main():
                     status_class = 'best'
                 
                 gap_class = 'gap-val red' if r['Gap'] > 0.15 else 'gap-val'
+                row_class = ' class="best-row"' if r['Model'] == 'RF (tuned)' else ''
                 
-                metrics_html += f'''
-                    <tr{' class="best-row"' if r['Model'] == 'RF (tuned)' else ''}>
+                table_html += f'''
+                    <tr{row_class}>
                         <td>{r['Model']}</td>
                         <td>{r['Train Acc']:.3f}</td>
                         <td>{r['Test Acc']:.3f}</td>
@@ -1702,14 +1794,15 @@ def main():
                     </tr>
                 '''
             
-            metrics_html += '''
+            table_html += '''
                         </tbody>
                     </table>
                 </div>
             </div>
             '''
             
-            st.markdown(metrics_html, unsafe_allow_html=True)
+            # Render the table
+            st.markdown(table_html, unsafe_allow_html=True)
     
     # Footer
     footer_html = """

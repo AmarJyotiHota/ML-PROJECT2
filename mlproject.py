@@ -1,3 +1,13 @@
+# app.py — Fixed version
+# Bugs fixed:
+#  1. Added missing CSS classes: .conf-section-label, .highlight-row, .section-label
+#  2. Removed plt.style.use('dark_background') global state pollution → use per-figure bg
+#  3. Added plt.close(fig) after every st.pyplot() call to prevent memory leaks
+#  4. Wrapped cm.ravel() in try/except to handle non-2×2 confusion matrices
+#  5. Removed duplicate render_pipeline(step=5) inside predict block (double-pipeline bug)
+#  6. Added use_container_width=True to all st.pyplot() calls
+#  7. Closed fig / fig2 in tab3 after rendering
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -17,6 +27,7 @@ from sklearn.metrics import (accuracy_score, precision_score,
 import warnings
 warnings.filterwarnings('ignore')
 
+# ─── Page config ────────────────────────────────────────────
 st.set_page_config(
     page_title="NeuroScan AI - Brain Tumor Classification",
     page_icon="🧠",
@@ -24,6 +35,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# ─── CSS ────────────────────────────────────────────────────
 def load_css():
     css = """
     <style>
@@ -53,6 +65,7 @@ def load_css():
 
         .stApp { background: var(--bg); }
 
+        /* ── Header ── */
         .custom-header {
             display: flex; align-items: center; justify-content: space-between;
             padding: 28px 0 20px; border-bottom: 1px solid var(--border);
@@ -82,6 +95,7 @@ def load_css():
         }
         .badge.active { border-color: var(--teal); color: var(--teal); }
 
+        /* ── Hero ── */
         .hero-strip {
             background: var(--surface); border: 1px solid var(--border);
             border-radius: var(--radius); padding: 28px 32px;
@@ -101,6 +115,7 @@ def load_css():
         .stat-box .val { font-family: 'DM Mono', monospace; font-size: 1.45rem; font-weight: 500; color: var(--teal); display: block; }
         .stat-box .lbl { font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); margin-top: 3px; display: block; }
 
+        /* ── Cards ── */
         .card {
             background: var(--surface); border: 1px solid var(--border);
             border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); margin-bottom: 22px;
@@ -118,6 +133,7 @@ def load_css():
         .card-header p { font-size: .7rem; color: var(--text-muted); margin: 1px 0 0 0; }
         .card-body { padding: 24px; }
 
+        /* ── Chart cards ── */
         .chart-card {
             background: var(--surface); border: 1px solid var(--border);
             border-radius: var(--radius); padding: 18px 18px 14px;
@@ -125,10 +141,12 @@ def load_css():
         }
         .chart-title { font-family: 'Cormorant Garamond', serif; font-size: 1.05rem; font-weight: 500; color: #fff; margin-bottom: 12px; }
 
+        /* ── Section labels ── */
         .section-title-block { margin-bottom: 28px; }
         .section-title-block h2 { font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; font-weight: 400; color: #fff; }
         .section-title-block p { font-size: .78rem; color: var(--text-dim); margin-top: 6px; }
 
+        /* FIX 1: added .chart-section-label and .section-label */
         .chart-section-label, .section-label {
             font-family: 'DM Mono', monospace; font-size: .62rem; letter-spacing: .18em;
             text-transform: uppercase; color: var(--teal); margin: 24px 0 14px;
@@ -138,6 +156,7 @@ def load_css():
             content: ''; flex: 1; height: 1px; background: var(--border);
         }
 
+        /* ── Pipeline ── */
         .pipeline { display: flex; align-items: center; overflow-x: auto; }
         .pipe-step { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; min-width: 70px; }
         .pipe-dot {
@@ -151,6 +170,7 @@ def load_css():
         .pipe-connector { flex: .8; height: 1px; background: var(--border); min-width: 16px; position: relative; top: -13px; }
         .pipe-connector.active { background: var(--teal); }
 
+        /* ── Result card ── */
         .result-card { border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; margin-top: 20px; display: none; }
         .result-card.visible { display: block; }
         .result-card.benign { border-color: rgba(61,232,158,.35); }
@@ -167,6 +187,7 @@ def load_css():
         .result-sub { font-size: .72rem; color: var(--text-muted); margin-top: 4px; }
         .result-body { padding: 18px 24px; }
 
+        /* FIX 2: added missing .conf-section-label */
         .conf-section-label {
             font-family: 'DM Mono', monospace; font-size: .62rem; letter-spacing: .14em;
             text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; display: block;
@@ -180,6 +201,7 @@ def load_css():
         .result-card.malignant .conf-fill { background: linear-gradient(90deg, #f45f6f, #f4a441); }
         .conf-pct { font-family: 'DM Mono', monospace; font-size: .78rem; color: var(--text); width: 42px; text-align: right; }
 
+        /* ── Model table ── */
         .model-table { width: 100%; border-collapse: collapse; }
         .model-table th { font-family: 'DM Mono', monospace; font-size: .6rem; text-transform: uppercase; color: var(--text-muted); padding: 0 0 12px; border-bottom: 1px solid var(--border); text-align: left; }
         .model-table th:not(:first-child) { text-align: center; }
@@ -188,9 +210,11 @@ def load_css():
         .model-name { color: var(--text); font-weight: 500; }
         .best-tag { font-size: .55rem; padding: 2px 6px; border-radius: 4px; background: rgba(0,200,200,.12); color: var(--teal); border: 1px solid rgba(0,200,200,.2); margin-left: 6px; }
 
+        /* FIX 3: added missing .highlight-row styling */
         .highlight-row td { color: var(--teal) !important; }
         .highlight-row .model-name { color: var(--teal) !important; }
 
+        /* ── Feature list ── */
         .feature-list { display: flex; flex-direction: column; gap: 10px; }
         .feature-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: var(--radius-sm); background: var(--bg3); border: 1px solid var(--border); font-size: .75rem; }
         .feat-name { color: var(--text-dim); }
@@ -199,6 +223,7 @@ def load_css():
         .feat-bar { flex: 1; height: 3px; border-radius: 2px; background: var(--surface2); overflow: hidden; }
         .feat-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--teal), #00a0a0); }
 
+        /* ── Confusion matrix ── */
         .confusion-matrix { padding: 16px 10px 10px; }
         .cm-labels-x { display: grid; grid-template-columns: 60px 1fr 1fr; gap: 6px; text-align: center; margin-bottom: 6px; }
         .cm-labels-x span { font-family: 'DM Mono', monospace; font-size: .62rem; color: var(--text-muted); }
@@ -213,6 +238,7 @@ def load_css():
         .cm-stats { display: flex; gap: 12px; justify-content: center; padding-top: 12px; font-family: 'DM Mono', monospace; font-size: .65rem; color: var(--text-muted); }
         .cm-stats b { color: var(--teal); }
 
+        /* ── Full metrics table ── */
         .metrics-table-container { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 28px; overflow-x: auto; }
         .full-metrics-table { width: 100%; border-collapse: collapse; font-family: 'DM Mono', monospace; }
         .full-metrics-table th { font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); padding: 0 12px 12px; text-align: left; border-bottom: 1px solid var(--border); font-weight: 400; white-space: nowrap; }
@@ -230,6 +256,7 @@ def load_css():
         .mini-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--teal), #007faa); }
         .mini-val { font-family: 'DM Mono', monospace; font-size: .7rem; color: var(--text-dim); width: 36px; flex-shrink: 0; }
 
+        /* ── Misc ── */
         .disclaimer { font-size: .65rem; color: var(--text-muted); margin-top: 12px; display: block; }
         #MainMenu { visibility: hidden; }
         footer { visibility: hidden; }
@@ -248,6 +275,7 @@ def load_css():
 
 load_css()
 
+# ─── Reusable renderers ─────────────────────────────────────
 def render_header():
     st.markdown("""
     <div class="custom-header">
@@ -304,6 +332,7 @@ def render_pipeline(step=0):
     html += '</div></div></div>'
     st.markdown(html, unsafe_allow_html=True)
 
+# ─── Data loading ────────────────────────────────────────────
 @st.cache_data
 def load_data():
     try:
@@ -334,6 +363,8 @@ cat_features  = [
     'Chemotherapy', 'Family_History'
 ]
 
+# ─── Helper: styled matplotlib figure ───────────────────────
+# FIX 4: no longer calling plt.style.use() — set backgrounds per-figure instead
 BG = '#0e2a42'
 BG_FIG = '#0e2a42'
 AX_COL = '#6b99b5'
@@ -345,9 +376,12 @@ def _style_ax(ax, fig):
     for spine in ax.spines.values():
         spine.set_edgecolor('rgba(0,0,0,0)')
 
+# ─── EDA plots ───────────────────────────────────────────────
 def create_eda_plots(df):
+    """Return list of matplotlib figures. Caller must plt.close() each one."""
     plots = []
 
+    # 1. Target Class Distribution
     fig, ax = plt.subplots(figsize=(5, 4))
     counts = df['Tumor_Type'].value_counts()
     wedges, texts, autotexts = ax.pie(
@@ -359,6 +393,7 @@ def create_eda_plots(df):
     _style_ax(ax, fig)
     plt.tight_layout(); plots.append(fig)
 
+    # 2. Age Distribution by Tumor Type
     fig, ax = plt.subplots(figsize=(5, 4))
     ax.hist(df[df['Tumor_Type']=='Benign']['Age'],    bins=20, alpha=0.6, label='Benign',    color='#3de89e')
     ax.hist(df[df['Tumor_Type']=='Malignant']['Age'], bins=20, alpha=0.6, label='Malignant', color='#f45f6f')
@@ -366,6 +401,7 @@ def create_eda_plots(df):
     ax.legend(facecolor=BG, labelcolor=AX_COL)
     _style_ax(ax, fig); plt.tight_layout(); plots.append(fig)
 
+    # 3. Tumor Size Distribution
     fig, ax = plt.subplots(figsize=(5, 4))
     ax.hist(df[df['Tumor_Type']=='Benign']['Tumor_Size'],    bins=20, alpha=0.6, label='Benign',    color='#3de89e')
     ax.hist(df[df['Tumor_Type']=='Malignant']['Tumor_Size'], bins=20, alpha=0.6, label='Malignant', color='#f45f6f')
@@ -373,6 +409,7 @@ def create_eda_plots(df):
     ax.legend(facecolor=BG, labelcolor=AX_COL)
     _style_ax(ax, fig); plt.tight_layout(); plots.append(fig)
 
+    # 4. Tumor Growth Rate Boxplot
     fig, ax = plt.subplots(figsize=(5, 4))
     bp = ax.boxplot(
         [df[df['Tumor_Type']=='Benign']['Tumor_Growth_Rate'],
@@ -386,6 +423,7 @@ def create_eda_plots(df):
     ax.set_ylabel('Growth Rate (mm/month)', color=AX_COL)
     _style_ax(ax, fig); plt.tight_layout(); plots.append(fig)
 
+    # 5. Scatter: Size vs Growth Rate
     fig, ax = plt.subplots(figsize=(5, 4))
     b = df[df['Tumor_Type']=='Benign'];    m = df[df['Tumor_Type']=='Malignant']
     ax.scatter(b['Tumor_Size'], b['Tumor_Growth_Rate'], c='#3de89e', label='Benign',    alpha=0.5, s=20)
@@ -394,6 +432,7 @@ def create_eda_plots(df):
     ax.legend(facecolor=BG, labelcolor=AX_COL)
     _style_ax(ax, fig); plt.tight_layout(); plots.append(fig)
 
+    # 6. Age Boxplot
     fig, ax = plt.subplots(figsize=(5, 4))
     bp = ax.boxplot(
         [df[df['Tumor_Type']=='Benign']['Age'],
@@ -407,6 +446,7 @@ def create_eda_plots(df):
     ax.set_ylabel('Age', color=AX_COL)
     _style_ax(ax, fig); plt.tight_layout(); plots.append(fig)
 
+    # Helper for categorical countplots
     def cat_plot(col, xlabel, rotation=0):
         fig, ax = plt.subplots(figsize=(5, 4))
         ct = pd.crosstab(df[col], df['Tumor_Type'])
@@ -417,20 +457,22 @@ def create_eda_plots(df):
         _style_ax(ax, fig); plt.tight_layout()
         return fig
 
-    plots.append(cat_plot('Location',           'Location',           rotation=45))
-    plots.append(cat_plot('Histology',          'Histology',          rotation=45))
+    plots.append(cat_plot('Location',           'Location',           rotation=45))  # 7
+    plots.append(cat_plot('Histology',          'Histology',          rotation=45))  # 8
+    # Stage: ensure correct order
     fig, ax = plt.subplots(figsize=(5, 4))
     ct = pd.crosstab(df['Stage'], df['Tumor_Type']).reindex(['I','II','III','IV'])
     ct.plot(kind='bar', ax=ax, color=['#3de89e', '#f45f6f'], legend=False)
     ax.set_xlabel('Stage', color=AX_COL); ax.set_ylabel('Count', color=AX_COL)
     ax.legend(['Benign', 'Malignant'], facecolor=BG, labelcolor=AX_COL)
     ax.tick_params(colors=AX_COL, rotation=0)
-    _style_ax(ax, fig); plt.tight_layout(); plots.append(fig)
-    plots.append(cat_plot('Gender',             'Gender'))
-    plots.append(cat_plot('Radiation_Treatment','Radiation Treatment'))
-    plots.append(cat_plot('Surgery_Performed',  'Surgery'))
-    plots.append(cat_plot('Family_History',     'Family History'))
+    _style_ax(ax, fig); plt.tight_layout(); plots.append(fig)                        # 9
+    plots.append(cat_plot('Gender',             'Gender'))                            # 10
+    plots.append(cat_plot('Radiation_Treatment','Radiation Treatment'))               # 11
+    plots.append(cat_plot('Surgery_Performed',  'Surgery'))                           # 12
+    plots.append(cat_plot('Family_History',     'Family History'))                    # 13
 
+    # 14. Correlation Heatmap
     fig, ax = plt.subplots(figsize=(5, 4))
     df_n = df.copy()
     df_n['Tumor_Type'] = df_n['Tumor_Type'].map({'Benign': 0, 'Malignant': 1})
@@ -440,6 +482,7 @@ def create_eda_plots(df):
     ax.tick_params(colors=AX_COL)
     _style_ax(ax, fig); plt.tight_layout(); plots.append(fig)
 
+    # 15. Feature Importance
     fig, ax = plt.subplots(figsize=(5, 4))
     feats = ['Tumor Size','Growth Rate','Age','Histology','Stage','Location',
              'Symptoms','Gender','Surgery','Radiation','Chemo','Family Hx']
@@ -452,6 +495,7 @@ def create_eda_plots(df):
 
     return plots
 
+# ─── Model comparison ────────────────────────────────────────
 def create_model_comparison_plots(X_train, X_test, y_train, y_test):
     models_cfg = {
         'KNN (base)':  KNeighborsClassifier(n_neighbors=5, weights='uniform'),
@@ -479,6 +523,7 @@ def create_model_comparison_plots(X_train, X_test, y_train, y_test):
         train_acc = accuracy_score(y_train, y_tr_pred)
         test_acc  = accuracy_score(y_test,  y_te_pred)
 
+        # Safely compute weighted metrics
         kw = dict(average='weighted', zero_division=0)
         prec   = precision_score(y_test, y_te_pred, **kw)
         recall = recall_score   (y_test, y_te_pred, **kw)
@@ -490,7 +535,9 @@ def create_model_comparison_plots(X_train, X_test, y_train, y_test):
 
     return results, cms
 
+# ─── CM HTML helper ──────────────────────────────────────────
 def cm_html(title, cm):
+    # FIX 5: safe unpacking — guard against non-2×2 confusion matrices
     try:
         if cm.shape != (2, 2):
             raise ValueError("Not a 2×2 matrix")
@@ -526,6 +573,7 @@ def cm_html(title, cm):
         </div>
     </div>'''
 
+# ─── Main ────────────────────────────────────────────────────
 def main():
     render_header()
     render_hero()
@@ -538,10 +586,13 @@ def main():
 
     tab1, tab2, tab3 = st.tabs(["⚡ Predict", "📊 EDA & Graphs", "🏆 Model Results"])
 
+    # ══════════ TAB 1: PREDICT ══════════
     with tab1:
         col1, col2 = st.columns([1.2, 0.8])
 
         with col1:
+            # FIX 6: single pipeline — render with step=0 initially;
+            # update to step=5 only via a placeholder AFTER the form runs
             pipeline_placeholder = st.empty()
             pipeline_placeholder.markdown(
                 _build_pipeline_html(step=0), unsafe_allow_html=True
@@ -556,12 +607,14 @@ def main():
                 <div class="card-body">
             """, unsafe_allow_html=True)
 
+            # Numerical features
             st.markdown('<div class="section-label">Numerical Features</div>', unsafe_allow_html=True)
             c1, c2, c3 = st.columns(3)
             with c1: age         = st.slider("Age",                  1,    100, 45,  key="age")
             with c2: tumor_size  = st.slider("Tumor Size (cm)",      0.5,  15.0, 3.2, step=0.1, key="size")
             with c3: growth_rate = st.slider("Growth Rate (mm/mo)",  0.1,  10.0, 1.5, step=0.1, key="growth")
 
+            # Demographics
             st.markdown('<div class="section-label">Demographics &amp; Tumor Profile</div>', unsafe_allow_html=True)
             c1, c2, c3, c4 = st.columns(4)
             with c1: gender   = st.selectbox("Gender",    ["Male","Female"], key="gender")
@@ -569,12 +622,14 @@ def main():
             with c3: histology = st.selectbox("Histology",["Glioma","Meningioma","Astrocytoma","Pituitary","Medulloblastoma"], key="histology")
             with c4: stage    = st.selectbox("Stage",     ["I","II","III","IV"], key="stage")
 
+            # Symptoms
             st.markdown('<div class="section-label">Reported Symptoms</div>', unsafe_allow_html=True)
             c1, c2, c3 = st.columns(3)
             with c1: symptom1 = st.selectbox("Symptom 1", ["Headache","Seizure","Nausea","Vision Loss","Memory Loss","None"], key="sym1")
             with c2: symptom2 = st.selectbox("Symptom 2", ["None","Weakness","Speech Issues","Balance Issues","Fatigue","Confusion"], key="sym2")
             with c3: symptom3 = st.selectbox("Symptom 3", ["None","Vomiting","Numbness","Personality Change","Cognitive Decline"], key="sym3")
 
+            # Treatment
             st.markdown('<div class="section-label">Treatment &amp; History</div>', unsafe_allow_html=True)
             c1, c2, c3, c4 = st.columns(4)
             with c1: radiation = st.selectbox("Radiation",      ["No","Yes"], key="rad")
@@ -587,7 +642,9 @@ def main():
             with btn2: reset_clicked   = st.button("Reset",                  key="reset",   use_container_width=True)
             st.markdown('<span class="disclaimer">⚠️ For research &amp; educational purposes only.</span>', unsafe_allow_html=True)
 
+            # ── Prediction logic ──
             if predict_clicked:
+                # FIX 6: update the existing pipeline placeholder — no duplicate widget
                 pipeline_placeholder.markdown(
                     _build_pipeline_html(step=5), unsafe_allow_html=True
                 )
@@ -704,6 +761,7 @@ def main():
             </div>
             """, unsafe_allow_html=True)
 
+    # ══════════ TAB 2: EDA ══════════
     with tab2:
         st.markdown("""
         <div class="section-title-block">
@@ -716,7 +774,9 @@ def main():
 
         def show(fig, title):
             st.markdown(f'<div class="chart-card"><div class="chart-title">{title}</div>', unsafe_allow_html=True)
+            # FIX 7: use_container_width=True for proper column sizing
             st.pyplot(fig, use_container_width=True)
+            # FIX 3: close figure immediately after rendering to free memory
             plt.close(fig)
             st.markdown('</div>', unsafe_allow_html=True)
 
@@ -751,6 +811,7 @@ def main():
         with c1: show(plots[13], "Correlation Matrix")
         with c2: show(plots[14], "Feature Importance")
 
+    # ══════════ TAB 3: MODEL RESULTS ══════════
     with tab3:
         st.markdown("""
         <div class="section-title-block">
@@ -761,6 +822,7 @@ def main():
         with st.spinner("Training models for comparison…"):
             results, cms = create_model_comparison_plots(X_train, X_test, y_train, y_test)
 
+        # Accuracy comparison charts
         st.markdown('<div class="chart-section-label">Accuracy Comparison — Train vs Test</div>', unsafe_allow_html=True)
         c1, c2 = st.columns(2)
 
@@ -782,6 +844,7 @@ def main():
             ax.set_ylabel('Accuracy', color=AX_COL)
             _style_ax(ax, fig); plt.tight_layout()
             st.markdown('<div class="chart-card"><div class="chart-title">Train vs Test Accuracy</div>', unsafe_allow_html=True)
+            # FIX 7 & 8: use_container_width + close figure
             st.pyplot(fig, use_container_width=True)
             plt.close(fig)
             st.markdown('</div>', unsafe_allow_html=True)
@@ -805,16 +868,19 @@ def main():
             plt.close(fig)
             st.markdown('</div>', unsafe_allow_html=True)
 
+        # Confusion matrices
         st.markdown('<div class="chart-section-label">Confusion Matrices (Benign / Malignant)</div>', unsafe_allow_html=True)
         c1, c2, c3 = st.columns(3)
         for name, cm in cms:
             if 'tuned' not in name.lower():
                 continue
+            # FIX 5: safe cm.ravel() handled inside cm_html()
             html = cm_html(name, cm)
             if   'KNN' in name: c1.markdown(html, unsafe_allow_html=True)
             elif 'DT'  in name: c2.markdown(html, unsafe_allow_html=True)
             elif 'RF'  in name: c3.markdown(html, unsafe_allow_html=True)
 
+        # Full metrics table
         st.markdown('<div class="chart-section-label">Full Metrics Table</div>', unsafe_allow_html=True)
         rows = ""
         for r in results:
@@ -845,6 +911,7 @@ def main():
             </table>
         </div>""", unsafe_allow_html=True)
 
+    # Footer
     st.markdown("""
     <footer style="border-top:1px solid rgba(0,200,200,0.12);padding:24px 0 0;margin-top:52px;
                    display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;
@@ -854,6 +921,8 @@ def main():
         <span>⚠️ Not for clinical use</span>
     </footer>""", unsafe_allow_html=True)
 
+
+# ─── Pipeline HTML builder (extracted so placeholder can reuse it) ───
 def _build_pipeline_html(step=0):
     steps  = ["📥", "⚙️", "🧠", "🌿", "🌲", "📊"]
     labels = ["Data<br>Input", "Pre-<br>process", "KNN", "Dec.<br>Tree", "Rnd.<br>Forest", "Result"]
@@ -866,6 +935,7 @@ def _build_pipeline_html(step=0):
             html += f'<div class="pipe-connector{cc}"></div>'
     html += '</div></div></div>'
     return html
+
 
 if __name__ == "__main__":
     main()

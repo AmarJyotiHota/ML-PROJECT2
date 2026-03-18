@@ -5,8 +5,6 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from matplotlib.patches import Rectangle
 import seaborn as sns
 from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.pipeline import Pipeline
@@ -27,13 +25,12 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS to match the HTML/CSS design exactly
+# Custom CSS
 def load_css():
     css = """
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Sora:wght@300;400;500;600;700&display=swap');
         
-        /* Variables */
         :root {
             --bg: #04101f;
             --bg2: #071828;
@@ -56,14 +53,12 @@ def load_css():
             --shadow-sm: 0 2px 16px rgba(0,0,0,0.35);
         }
         
-        /* Main container */
         .stApp {
             background: var(--bg);
             color: var(--text);
             font-family: 'Sora', sans-serif;
         }
         
-        /* Background mesh */
         .stApp::before {
             content: '';
             position: fixed; inset: 0;
@@ -84,7 +79,6 @@ def load_css():
             z-index: 0;
         }
         
-        /* Header */
         .custom-header {
             display: flex;
             align-items: center;
@@ -165,7 +159,6 @@ def load_css():
             box-shadow: 0 0 12px rgba(0,200,200,.15);
         }
         
-        /* Hero Strip */
         .hero-strip {
             background: var(--surface);
             border: 1px solid var(--border);
@@ -245,17 +238,13 @@ def load_css():
             display: block;
         }
         
-        /* Tab Navigation */
-        .tab-nav {
-            display: flex;
+        .stTabs [data-baseweb="tab-list"] {
             gap: 4px;
-            margin-bottom: 28px;
             border-bottom: 1px solid var(--border);
-            padding-bottom: 0;
-            animation: fadeUp .5s .15s ease both;
+            margin-bottom: 28px;
         }
         
-        .tab-btn {
+        .stTabs [data-baseweb="tab"] {
             font-family: 'Sora', sans-serif;
             font-size: .78rem;
             font-weight: 500;
@@ -264,22 +253,16 @@ def load_css():
             border: none;
             border-bottom: 2px solid transparent;
             color: var(--text-muted);
-            cursor: pointer;
             transition: color .2s, border-color .2s;
             margin-bottom: -1px;
             letter-spacing: .02em;
         }
         
-        .tab-btn:hover {
-            color: var(--text-dim);
+        .stTabs [aria-selected="true"] {
+            color: var(--teal) !important;
+            border-bottom-color: var(--teal) !important;
         }
         
-        .tab-btn.active {
-            color: var(--teal);
-            border-bottom-color: var(--teal);
-        }
-        
-        /* Section Titles */
         .section-title-block {
             margin-bottom: 28px;
         }
@@ -317,14 +300,12 @@ def load_css():
             background: var(--border);
         }
         
-        /* Chart Cards */
         .chart-card {
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: var(--radius);
             padding: 18px 18px 14px;
             box-shadow: var(--shadow-sm);
-            animation: fadeUp .5s ease both;
             margin-bottom: 18px;
         }
         
@@ -345,14 +326,12 @@ def load_css():
             line-height: 1.4;
         }
         
-        /* Cards */
         .card {
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: var(--radius);
             overflow: hidden;
             box-shadow: var(--shadow-sm);
-            animation: fadeUp .6s .2s ease both;
             margin-bottom: 22px;
         }
         
@@ -395,7 +374,6 @@ def load_css():
             padding: 24px;
         }
         
-        /* Form */
         .form-section {
             margin-bottom: 26px;
         }
@@ -425,7 +403,6 @@ def load_css():
             gap: 14px;
         }
         
-        /* Override Streamlit form elements */
         .stSlider > div > div {
             background: transparent !important;
         }
@@ -447,7 +424,6 @@ def load_css():
             color: var(--text) !important;
         }
         
-        /* Result Card */
         .result-card {
             border-radius: var(--radius);
             border: 1px solid var(--border);
@@ -585,7 +561,6 @@ def load_css():
             flex-shrink: 0;
         }
         
-        /* Pipeline */
         .pipeline {
             display: flex;
             align-items: center;
@@ -654,7 +629,6 @@ def load_css():
             box-shadow: 0 0 6px rgba(0,200,200,.3);
         }
         
-        /* Model Table */
         .model-table {
             width: 100%;
             border-collapse: collapse;
@@ -734,7 +708,6 @@ def load_css():
             flex-shrink: 0;
         }
         
-        /* Feature List */
         .feature-list {
             display: flex;
             flex-direction: column;
@@ -784,7 +757,6 @@ def load_css():
             background: linear-gradient(90deg, var(--teal), #00a0a0);
         }
         
-        /* Confusion Matrix */
         .confusion-matrix {
             padding: 16px 10px 10px;
             display: flex;
@@ -896,7 +868,6 @@ def load_css():
             color: var(--teal);
         }
         
-        /* Full Metrics Table */
         .full-metrics-table {
             width: 100%;
             border-collapse: collapse;
@@ -957,7 +928,6 @@ def load_css():
             border: 1px solid rgba(0,200,200,.25);
         }
         
-        /* Buttons */
         .stButton > button {
             background: linear-gradient(135deg, #00b8b8 0%, #007a8a 100%);
             color: white;
@@ -981,20 +951,6 @@ def load_css():
             filter: brightness(1.08);
         }
         
-        .stButton.reset > button {
-            background: transparent;
-            border: 1px solid var(--border);
-            color: var(--text-dim);
-            box-shadow: none;
-        }
-        
-        .stButton.reset > button:hover {
-            border-color: var(--border-hi);
-            color: var(--text);
-            transform: none;
-            box-shadow: none;
-        }
-        
         .disclaimer {
             font-size: .65rem;
             color: var(--text-muted);
@@ -1003,7 +959,6 @@ def load_css():
             display: block;
         }
         
-        /* Footer */
         footer {
             border-top: 1px solid var(--border);
             padding: 24px 0 0;
@@ -1023,7 +978,6 @@ def load_css():
             color: var(--text-dim);
         }
         
-        /* Animations */
         @keyframes fadeDown {
             from { opacity: 0; transform: translateY(-12px); }
             to { opacity: 1; transform: translateY(0); }
@@ -1034,12 +988,10 @@ def load_css():
             to { opacity: 1; transform: translateY(0); }
         }
         
-        /* Hide Streamlit branding */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         .stApp > header {visibility: hidden;}
         
-        /* Layout */
         .block-container {
             padding-top: 1rem;
             padding-bottom: 0rem;
@@ -1048,37 +1000,6 @@ def load_css():
         
         .row-widget.stHorizontal {
             gap: 26px;
-        }
-        
-        /* Grid layouts */
-        .charts-grid-3 {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 18px;
-            margin-bottom: 4px;
-        }
-        
-        .charts-grid-4 {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 18px;
-            margin-bottom: 4px;
-        }
-        
-        .charts-grid-2 {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 18px;
-            margin-bottom: 4px;
-        }
-        
-        @media (max-width: 1100px) {
-            .charts-grid-4 { grid-template-columns: repeat(2, 1fr); }
-            .charts-grid-3 { grid-template-columns: repeat(2, 1fr); }
-        }
-        
-        @media (max-width: 720px) {
-            .charts-grid-4, .charts-grid-3, .charts-grid-2 { grid-template-columns: 1fr; }
         }
         
         .main-grid {
@@ -1163,22 +1084,6 @@ def render_hero():
     """
     st.markdown(hero_html, unsafe_allow_html=True)
 
-# Tab navigation
-def render_tabs(active_tab):
-    tabs_html = f"""
-    <div class="tab-nav">
-        <button class="tab-btn {'active' if active_tab == 'predict' else ''}" onclick="switchTab('predict')">⚡ Predict</button>
-        <button class="tab-btn {'active' if active_tab == 'eda' else ''}" onclick="switchTab('eda')">📊 EDA &amp; Graphs</button>
-        <button class="tab-btn {'active' if active_tab == 'models' else ''}" onclick="switchTab('models')">🏆 Model Results</button>
-    </div>
-    <script>
-    function switchTab(tab) {{
-        window.location.href = window.location.pathname + '?tab=' + tab;
-    }}
-    </script>
-    """
-    st.markdown(tabs_html, unsafe_allow_html=True)
-
 # Pipeline tracker
 def render_pipeline(step=0):
     steps = ["📥", "⚙️", "🧠", "🌿", "🌲", "📊"]
@@ -1233,19 +1138,21 @@ cat_features = [
     'Chemotherapy', 'Family_History'
 ]
 
-# Create EDA plots
+# Create EDA plots - Fixed version
 def create_eda_plots(df):
+    plots = []
+    
     # Set style for all plots
     plt.style.use('dark_background')
     
-    # 1. Target Class Distribution (Doughnut chart)
+    # 1. Target Class Distribution
     fig1, ax1 = plt.subplots(figsize=(5, 4))
-    benign_count = (df['Tumor_Type'] == 'Benign').sum()
-    malignant_count = (df['Tumor_Type'] == 'Malignant').sum()
+    counts = df['Tumor_Type'].value_counts()
+    colors = ['#3de89e', '#f45f6f']
     wedges, texts, autotexts = ax1.pie(
-        [benign_count, malignant_count], 
-        labels=['Benign', 'Malignant'],
-        colors=['#3de89e', '#f45f6f'],
+        counts.values, 
+        labels=counts.index,
+        colors=colors,
         autopct='%1.0f%%',
         startangle=90,
         wedgeprops=dict(width=0.7, edgecolor='none')
@@ -1258,8 +1165,10 @@ def create_eda_plots(df):
         text.set_fontsize(9)
     ax1.set_facecolor('#0e2a42')
     fig1.patch.set_facecolor('#0e2a42')
+    plt.tight_layout()
+    plots.append(('Target Class Distribution', fig1))
     
-    # 2. Age Distribution by Tumor Type (Histogram)
+    # 2. Age Distribution by Tumor Type
     fig2, ax2 = plt.subplots(figsize=(5, 4))
     for tumor_type, color in [('Benign', '#3de89e'), ('Malignant', '#f45f6f')]:
         subset = df[df['Tumor_Type'] == tumor_type]['Age']
@@ -1270,6 +1179,8 @@ def create_eda_plots(df):
     ax2.tick_params(colors='#6b99b5')
     ax2.set_facecolor('#0e2a42')
     fig2.patch.set_facecolor('#0e2a42')
+    plt.tight_layout()
+    plots.append(('Age Distribution by Tumor Type', fig2))
     
     # 3. Tumor Size Distribution
     fig3, ax3 = plt.subplots(figsize=(5, 4))
@@ -1282,13 +1193,15 @@ def create_eda_plots(df):
     ax3.tick_params(colors='#6b99b5')
     ax3.set_facecolor('#0e2a42')
     fig3.patch.set_facecolor('#0e2a42')
+    plt.tight_layout()
+    plots.append(('Tumor Size Distribution', fig3))
     
     # 4. Tumor Growth Rate Boxplot
     fig4, ax4 = plt.subplots(figsize=(5, 4))
     benign_growth = df[df['Tumor_Type'] == 'Benign']['Tumor_Growth_Rate']
     malignant_growth = df[df['Tumor_Type'] == 'Malignant']['Tumor_Growth_Rate']
     bp = ax4.boxplot([benign_growth, malignant_growth], labels=['Benign', 'Malignant'],
-                     patch_artist=True)
+                     patch_artist=True, widths=0.6)
     bp['boxes'][0].set_facecolor('#3de89e')
     bp['boxes'][1].set_facecolor('#f45f6f')
     for whisker in bp['whiskers']:
@@ -1301,6 +1214,8 @@ def create_eda_plots(df):
     ax4.tick_params(colors='#6b99b5')
     ax4.set_facecolor('#0e2a42')
     fig4.patch.set_facecolor('#0e2a42')
+    plt.tight_layout()
+    plots.append(('Tumor Growth Rate by Type', fig4))
     
     # 5. Tumor Size vs Growth Rate Scatter
     fig5, ax5 = plt.subplots(figsize=(5, 4))
@@ -1314,12 +1229,14 @@ def create_eda_plots(df):
     ax5.tick_params(colors='#6b99b5')
     ax5.set_facecolor('#0e2a42')
     fig5.patch.set_facecolor('#0e2a42')
+    plt.tight_layout()
+    plots.append(('Tumor Size vs Growth Rate', fig5))
     
     # 6. Age Boxplot
     fig6, ax6 = plt.subplots(figsize=(5, 4))
     bp = ax6.boxplot([df[df['Tumor_Type'] == 'Benign']['Age'],
                       df[df['Tumor_Type'] == 'Malignant']['Age']],
-                     labels=['Benign', 'Malignant'], patch_artist=True)
+                     labels=['Benign', 'Malignant'], patch_artist=True, widths=0.6)
     bp['boxes'][0].set_facecolor('#3de89e')
     bp['boxes'][1].set_facecolor('#f45f6f')
     for whisker in bp['whiskers']:
@@ -1332,90 +1249,100 @@ def create_eda_plots(df):
     ax6.tick_params(colors='#6b99b5')
     ax6.set_facecolor('#0e2a42')
     fig6.patch.set_facecolor('#0e2a42')
+    plt.tight_layout()
+    plots.append(('Age Distribution (Boxplot)', fig6))
     
     # 7. Location countplot
     fig7, ax7 = plt.subplots(figsize=(5, 4))
     location_ct = pd.crosstab(df['Location'], df['Tumor_Type'])
-    location_ct.plot(kind='bar', ax=ax7, color=['#3de89e', '#f45f6f'])
+    location_ct.plot(kind='bar', ax=ax7, color=['#3de89e', '#f45f6f'], legend=False)
     ax7.set_xlabel('Location', color='#6b99b5', fontsize=9)
     ax7.set_ylabel('Count', color='#6b99b5', fontsize=9)
-    ax7.legend(facecolor='#0e2a42', labelcolor='#6b99b5')
+    ax7.legend(['Benign', 'Malignant'], facecolor='#0e2a42', labelcolor='#6b99b5')
     ax7.tick_params(colors='#6b99b5', rotation=45)
     ax7.set_facecolor('#0e2a42')
     fig7.patch.set_facecolor('#0e2a42')
+    plt.tight_layout()
+    plots.append(('Location vs Tumor Type', fig7))
     
     # 8. Histology countplot
     fig8, ax8 = plt.subplots(figsize=(5, 4))
     histology_ct = pd.crosstab(df['Histology'], df['Tumor_Type'])
-    histology_ct.plot(kind='bar', ax=ax8, color=['#3de89e', '#f45f6f'])
+    histology_ct.plot(kind='bar', ax=ax8, color=['#3de89e', '#f45f6f'], legend=False)
     ax8.set_xlabel('Histology', color='#6b99b5', fontsize=9)
     ax8.set_ylabel('Count', color='#6b99b5', fontsize=9)
-    ax8.legend(facecolor='#0e2a42', labelcolor='#6b99b5')
+    ax8.legend(['Benign', 'Malignant'], facecolor='#0e2a42', labelcolor='#6b99b5')
     ax8.tick_params(colors='#6b99b5', rotation=45)
     ax8.set_facecolor('#0e2a42')
     fig8.patch.set_facecolor('#0e2a42')
+    plt.tight_layout()
+    plots.append(('Histology vs Tumor Type', fig8))
     
     # 9. Stage countplot
     fig9, ax9 = plt.subplots(figsize=(5, 4))
     stage_order = ['I', 'II', 'III', 'IV']
     stage_ct = pd.crosstab(df['Stage'], df['Tumor_Type']).reindex(stage_order)
-    stage_ct.plot(kind='bar', ax=ax9, color=['#3de89e', '#f45f6f'])
+    stage_ct.plot(kind='bar', ax=ax9, color=['#3de89e', '#f45f6f'], legend=False)
     ax9.set_xlabel('Stage', color='#6b99b5', fontsize=9)
     ax9.set_ylabel('Count', color='#6b99b5', fontsize=9)
-    ax9.legend(facecolor='#0e2a42', labelcolor='#6b99b5')
+    ax9.legend(['Benign', 'Malignant'], facecolor='#0e2a42', labelcolor='#6b99b5')
     ax9.tick_params(colors='#6b99b5', rotation=0)
     ax9.set_facecolor('#0e2a42')
     fig9.patch.set_facecolor('#0e2a42')
+    plt.tight_layout()
+    plots.append(('Stage vs Tumor Type', fig9))
     
     # 10. Gender countplot
     fig10, ax10 = plt.subplots(figsize=(5, 4))
     gender_ct = pd.crosstab(df['Gender'], df['Tumor_Type'])
-    gender_ct.plot(kind='bar', ax=ax10, color=['#3de89e', '#f45f6f'])
+    gender_ct.plot(kind='bar', ax=ax10, color=['#3de89e', '#f45f6f'], legend=False)
     ax10.set_xlabel('Gender', color='#6b99b5', fontsize=9)
     ax10.set_ylabel('Count', color='#6b99b5', fontsize=9)
-    ax10.legend(facecolor='#0e2a42', labelcolor='#6b99b5')
+    ax10.legend(['Benign', 'Malignant'], facecolor='#0e2a42', labelcolor='#6b99b5')
     ax10.tick_params(colors='#6b99b5', rotation=0)
     ax10.set_facecolor('#0e2a42')
     fig10.patch.set_facecolor('#0e2a42')
+    plt.tight_layout()
+    plots.append(('Gender vs Tumor Type', fig10))
     
     # 11. Radiation Treatment
     fig11, ax11 = plt.subplots(figsize=(5, 4))
     radiation_ct = pd.crosstab(df['Radiation_Treatment'], df['Tumor_Type'])
-    radiation_ct.plot(kind='bar', ax=ax11, color=['#3de89e', '#f45f6f'])
+    radiation_ct.plot(kind='bar', ax=ax11, color=['#3de89e', '#f45f6f'], legend=False)
     ax11.set_xlabel('Radiation Treatment', color='#6b99b5', fontsize=9)
     ax11.set_ylabel('Count', color='#6b99b5', fontsize=9)
-    ax11.legend(facecolor='#0e2a42', labelcolor='#6b99b5')
+    ax11.legend(['Benign', 'Malignant'], facecolor='#0e2a42', labelcolor='#6b99b5')
     ax11.tick_params(colors='#6b99b5', rotation=0)
     ax11.set_facecolor('#0e2a42')
     fig11.patch.set_facecolor('#0e2a42')
+    plt.tight_layout()
+    plots.append(('Radiation Treatment', fig11))
     
-    # 12. Surgery & Chemo (combined)
+    # 12. Surgery
     fig12, ax12 = plt.subplots(figsize=(5, 4))
-    surgery_data = pd.DataFrame({
-        'No Surgery': [df[df['Surgery_Performed'] == 'No']['Tumor_Type'].value_counts().get('Benign', 0),
-                       df[df['Surgery_Performed'] == 'No']['Tumor_Type'].value_counts().get('Malignant', 0)],
-        'Surgery': [df[df['Surgery_Performed'] == 'Yes']['Tumor_Type'].value_counts().get('Benign', 0),
-                    df[df['Surgery_Performed'] == 'Yes']['Tumor_Type'].value_counts().get('Malignant', 0)]
-    }, index=['Benign', 'Malignant']).T
-    surgery_data.plot(kind='bar', ax=ax12, color=['#3de89e', '#f45f6f'])
-    ax12.set_title('Surgery', color='white', fontsize=10)
-    ax12.set_xlabel('', color='#6b99b5', fontsize=9)
+    surgery_ct = pd.crosstab(df['Surgery_Performed'], df['Tumor_Type'])
+    surgery_ct.plot(kind='bar', ax=ax12, color=['#3de89e', '#f45f6f'], legend=False)
+    ax12.set_xlabel('Surgery', color='#6b99b5', fontsize=9)
     ax12.set_ylabel('Count', color='#6b99b5', fontsize=9)
-    ax12.legend(facecolor='#0e2a42', labelcolor='#6b99b5')
+    ax12.legend(['Benign', 'Malignant'], facecolor='#0e2a42', labelcolor='#6b99b5')
     ax12.tick_params(colors='#6b99b5', rotation=0)
     ax12.set_facecolor('#0e2a42')
     fig12.patch.set_facecolor('#0e2a42')
+    plt.tight_layout()
+    plots.append(('Surgery', fig12))
     
     # 13. Family History
     fig13, ax13 = plt.subplots(figsize=(5, 4))
     family_ct = pd.crosstab(df['Family_History'], df['Tumor_Type'])
-    family_ct.plot(kind='bar', ax=ax13, color=['#3de89e', '#f45f6f'])
+    family_ct.plot(kind='bar', ax=ax13, color=['#3de89e', '#f45f6f'], legend=False)
     ax13.set_xlabel('Family History', color='#6b99b5', fontsize=9)
     ax13.set_ylabel('Count', color='#6b99b5', fontsize=9)
-    ax13.legend(facecolor='#0e2a42', labelcolor='#6b99b5')
+    ax13.legend(['Benign', 'Malignant'], facecolor='#0e2a42', labelcolor='#6b99b5')
     ax13.tick_params(colors='#6b99b5', rotation=0)
     ax13.set_facecolor('#0e2a42')
     fig13.patch.set_facecolor('#0e2a42')
+    plt.tight_layout()
+    plots.append(('Family History', fig13))
     
     # 14. Correlation Heatmap
     fig14, ax14 = plt.subplots(figsize=(5, 4))
@@ -1424,10 +1351,12 @@ def create_eda_plots(df):
     numeric_cols = ['Age', 'Tumor_Size', 'Tumor_Growth_Rate', 'Tumor_Type']
     corr_matrix = df_numeric[numeric_cols].corr()
     sns.heatmap(corr_matrix, annot=True, fmt='.2f', cmap='coolwarm', 
-                ax=ax14, cbar=False, annot_kws={'color': 'white'})
+                ax=ax14, cbar=False, annot_kws={'color': 'white', 'size': 8})
     ax14.set_facecolor('#0e2a42')
     fig14.patch.set_facecolor('#0e2a42')
-    ax14.tick_params(colors='#6b99b5')
+    ax14.tick_params(colors='#6b99b5', labelsize=8)
+    plt.tight_layout()
+    plots.append(('Correlation Heatmap', fig14))
     
     # 15. Feature Importance
     fig15, ax15 = plt.subplots(figsize=(5, 4))
@@ -1443,24 +1372,10 @@ def create_eda_plots(df):
     ax15.tick_params(colors='#6b99b5')
     ax15.set_facecolor('#0e2a42')
     fig15.patch.set_facecolor('#0e2a42')
+    plt.tight_layout()
+    plots.append(('Feature Importance', fig15))
     
-    return [
-        ('Target Class Distribution', fig1),
-        ('Age Distribution by Tumor Type', fig2),
-        ('Tumor Size Distribution', fig3),
-        ('Tumor Growth Rate by Type', fig4),
-        ('Tumor Size vs Growth Rate', fig5),
-        ('Age Distribution (Boxplot)', fig6),
-        ('Location vs Tumor Type', fig7),
-        ('Histology vs Tumor Type', fig8),
-        ('Stage vs Tumor Type', fig9),
-        ('Gender vs Tumor Type', fig10),
-        ('Radiation Treatment', fig11),
-        ('Surgery', fig12),
-        ('Family History', fig13),
-        ('Correlation Heatmap', fig14),
-        ('Feature Importance', fig15)
-    ]
+    return plots
 
 # Create model comparison plots
 def create_model_comparison_plots(X_train, X_test, y_train, y_test):
@@ -1470,7 +1385,7 @@ def create_model_comparison_plots(X_train, X_test, y_train, y_test):
         'KNN (tuned)': KNeighborsClassifier(n_neighbors=3, weights='distance', metric='manhattan'),
         'DT (base)': DecisionTreeClassifier(random_state=42),
         'DT (tuned)': DecisionTreeClassifier(max_depth=10, min_samples_split=5, random_state=42),
-        'RF (base)': RandomForestClassifier(random_state=42),
+        'RF (base)': RandomForestClassifier(random_state=42, n_estimators=100),
         'RF (tuned)': RandomForestClassifier(n_estimators=300, max_depth=20, min_samples_split=5, random_state=42)
     }
     
@@ -1518,18 +1433,15 @@ def main():
     render_header()
     render_hero()
     
-    # Get tab from URL parameters
-    query_params = st.query_params
-    active_tab = query_params.get('tab', 'predict')
-    
-    render_tabs(active_tab)
-    
     df = load_data()
     
     if df is not None:
         X_train, X_test, y_train, y_test, df_encoded = split_data(df)
         
-        if active_tab == 'predict':
+        # Create tabs using st.tabs
+        tab1, tab2, tab3 = st.tabs(["⚡ Predict", "📊 EDA & Graphs", "🏆 Model Results"])
+        
+        with tab1:
             # Prediction Tab
             col1, col2 = st.columns([1.2, 0.8])
             
@@ -1555,13 +1467,10 @@ def main():
                 col_age, col_size, col_growth = st.columns(3)
                 with col_age:
                     age = st.slider("Age", 1, 100, 45, key="age")
-                    st.markdown(f'<span id="age-val" style="display:none;">{age}</span>', unsafe_allow_html=True)
                 with col_size:
                     tumor_size = st.slider("Tumor Size (cm)", 0.5, 15.0, 3.2, step=0.1, key="size")
-                    st.markdown(f'<span id="size-val" style="display:none;">{tumor_size:.1f}</span>', unsafe_allow_html=True)
                 with col_growth:
                     growth_rate = st.slider("Growth Rate (mm/mo)", 0.1, 10.0, 1.5, step=0.1, key="growth")
-                    st.markdown(f'<span id="gr-val" style="display:none;">{growth_rate:.1f}</span>', unsafe_allow_html=True)
                 
                 st.markdown('</div></div>', unsafe_allow_html=True)
                 
@@ -1692,7 +1601,7 @@ def main():
                     st.rerun()
                 
                 else:
-                    st.markdown('<div class="result-card" id="result-card"></div>', unsafe_allow_html=True)
+                    st.markdown('<div class="result-card"></div>', unsafe_allow_html=True)
                 
                 st.markdown('</div></div>', unsafe_allow_html=True)
             
@@ -1777,110 +1686,128 @@ def main():
                 </div>
                 """, unsafe_allow_html=True)
         
-        elif active_tab == 'eda':
-            # EDA Tab
+        with tab2:
+            # EDA Tab - Fixed version
             st.markdown("""
             <div class="section-title-block">
                 <h2>Exploratory Data Analysis</h2>
-                <p>Replicating every visualization from the Python script — distributions, boxplots, scatter plots, categorical breakdowns, and correlation heatmap</p>
+                <p>Complete visualization of tumor dataset characteristics</p>
             </div>
             """, unsafe_allow_html=True)
             
-            plots = create_eda_plots(df)
+            # Create all EDA plots
+            with st.spinner("Generating EDA visualizations..."):
+                plots = create_eda_plots(df)
             
             # Target & Numerical Distributions
-            st.markdown('<div class="chart-section-label">Target &amp; Numerical Distributions (sns.histplot / sns.countplot)</div>', unsafe_allow_html=True)
+            st.markdown('<div class="chart-section-label">Target & Numerical Distributions</div>', unsafe_allow_html=True)
             col1, col2, col3 = st.columns(3)
+            
             with col1:
-                st.markdown('<div class="chart-card"><div class="chart-title">Target Class Distribution</div><div class="chart-subtitle">sns.countplot(x=\'Tumor_Type\')</div>', unsafe_allow_html=True)
+                st.markdown('<div class="chart-card"><div class="chart-title">Target Class Distribution</div><div class="chart-subtitle">Pie chart showing Benign vs Malignant</div>', unsafe_allow_html=True)
                 st.pyplot(plots[0][1])
                 st.markdown('</div>', unsafe_allow_html=True)
+            
             with col2:
-                st.markdown('<div class="chart-card"><div class="chart-title">Age Distribution by Tumor Type</div><div class="chart-subtitle">sns.histplot(x=\'Age\', hue=\'Tumor_Type\')</div>', unsafe_allow_html=True)
+                st.markdown('<div class="chart-card"><div class="chart-title">Age Distribution</div><div class="chart-subtitle">Histogram by tumor type</div>', unsafe_allow_html=True)
                 st.pyplot(plots[1][1])
                 st.markdown('</div>', unsafe_allow_html=True)
+            
             with col3:
-                st.markdown('<div class="chart-card"><div class="chart-title">Tumor Size Distribution</div><div class="chart-subtitle">sns.histplot(x=\'Tumor_Size\', hue=\'Tumor_Type\')</div>', unsafe_allow_html=True)
+                st.markdown('<div class="chart-card"><div class="chart-title">Tumor Size Distribution</div><div class="chart-subtitle">Histogram by tumor type</div>', unsafe_allow_html=True)
                 st.pyplot(plots[2][1])
                 st.markdown('</div>', unsafe_allow_html=True)
             
             # Boxplots & Scatter
-            st.markdown('<div class="chart-section-label">Boxplots &amp; Scatter (sns.boxplot / sns.scatterplot)</div>', unsafe_allow_html=True)
+            st.markdown('<div class="chart-section-label">Boxplots & Scatter Plots</div>', unsafe_allow_html=True)
             col1, col2, col3 = st.columns(3)
+            
             with col1:
-                st.markdown('<div class="chart-card"><div class="chart-title">Tumor Growth Rate by Type</div><div class="chart-subtitle">sns.boxplot(x=\'Tumor_Type\', y=\'Tumor_Growth_Rate\')</div>', unsafe_allow_html=True)
+                st.markdown('<div class="chart-card"><div class="chart-title">Tumor Growth Rate</div><div class="chart-subtitle">Boxplot by tumor type</div>', unsafe_allow_html=True)
                 st.pyplot(plots[3][1])
                 st.markdown('</div>', unsafe_allow_html=True)
+            
             with col2:
-                st.markdown('<div class="chart-card"><div class="chart-title">Tumor Size vs Growth Rate</div><div class="chart-subtitle">sns.scatterplot(x=\'Tumor_Size\', y=\'Tumor_Growth_Rate\', hue=\'Tumor_Type\')</div>', unsafe_allow_html=True)
+                st.markdown('<div class="chart-card"><div class="chart-title">Size vs Growth Rate</div><div class="chart-subtitle">Scatter plot with color by type</div>', unsafe_allow_html=True)
                 st.pyplot(plots[4][1])
                 st.markdown('</div>', unsafe_allow_html=True)
+            
             with col3:
-                st.markdown('<div class="chart-card"><div class="chart-title">Age Distribution (Boxplot)</div><div class="chart-subtitle">sns.boxplot(x=df[\'Age\'])</div>', unsafe_allow_html=True)
+                st.markdown('<div class="chart-card"><div class="chart-title">Age Distribution</div><div class="chart-subtitle">Boxplot by tumor type</div>', unsafe_allow_html=True)
                 st.pyplot(plots[5][1])
                 st.markdown('</div>', unsafe_allow_html=True)
             
             # Categorical Feature Breakdowns
-            st.markdown('<div class="chart-section-label">Categorical Feature Breakdowns (sns.countplot with hue)</div>', unsafe_allow_html=True)
+            st.markdown('<div class="chart-section-label">Categorical Feature Breakdowns</div>', unsafe_allow_html=True)
             col1, col2 = st.columns(2)
+            
             with col1:
-                st.markdown('<div class="chart-card"><div class="chart-title">Location vs Tumor Type</div><div class="chart-subtitle">countplot(x=\'Location\', hue=\'Tumor_Type\')</div>', unsafe_allow_html=True)
+                st.markdown('<div class="chart-card"><div class="chart-title">Location vs Tumor Type</div><div class="chart-subtitle">Count plot with hue</div>', unsafe_allow_html=True)
                 st.pyplot(plots[6][1])
                 st.markdown('</div>', unsafe_allow_html=True)
+            
             with col2:
-                st.markdown('<div class="chart-card"><div class="chart-title">Histology vs Tumor Type</div><div class="chart-subtitle">countplot(x=\'Histology\', hue=\'Tumor_Type\')</div>', unsafe_allow_html=True)
+                st.markdown('<div class="chart-card"><div class="chart-title">Histology vs Tumor Type</div><div class="chart-subtitle">Count plot with hue</div>', unsafe_allow_html=True)
                 st.pyplot(plots[7][1])
                 st.markdown('</div>', unsafe_allow_html=True)
             
             col1, col2 = st.columns(2)
+            
             with col1:
-                st.markdown('<div class="chart-card"><div class="chart-title">Stage vs Tumor Type</div><div class="chart-subtitle">countplot(x=\'Stage\', hue=\'Tumor_Type\')</div>', unsafe_allow_html=True)
+                st.markdown('<div class="chart-card"><div class="chart-title">Stage vs Tumor Type</div><div class="chart-subtitle">Count plot with hue</div>', unsafe_allow_html=True)
                 st.pyplot(plots[8][1])
                 st.markdown('</div>', unsafe_allow_html=True)
+            
             with col2:
-                st.markdown('<div class="chart-card"><div class="chart-title">Gender vs Tumor Type</div><div class="chart-subtitle">countplot(x=\'Gender\', hue=\'Tumor_Type\')</div>', unsafe_allow_html=True)
+                st.markdown('<div class="chart-card"><div class="chart-title">Gender vs Tumor Type</div><div class="chart-subtitle">Count plot with hue</div>', unsafe_allow_html=True)
                 st.pyplot(plots[9][1])
                 st.markdown('</div>', unsafe_allow_html=True)
             
             # Treatment History
-            st.markdown('<div class="chart-section-label">Treatment History (Categorical — cont.)</div>', unsafe_allow_html=True)
+            st.markdown('<div class="chart-section-label">Treatment & Family History</div>', unsafe_allow_html=True)
             col1, col2, col3 = st.columns(3)
+            
             with col1:
-                st.markdown('<div class="chart-card"><div class="chart-title">Radiation Treatment</div><div class="chart-subtitle">countplot(x=\'Radiation_Treatment\', hue=\'Tumor_Type\')</div>', unsafe_allow_html=True)
+                st.markdown('<div class="chart-card"><div class="chart-title">Radiation Treatment</div><div class="chart-subtitle">Count plot with hue</div>', unsafe_allow_html=True)
                 st.pyplot(plots[10][1])
                 st.markdown('</div>', unsafe_allow_html=True)
+            
             with col2:
-                st.markdown('<div class="chart-card"><div class="chart-title">Surgery & Chemotherapy</div><div class="chart-subtitle">Surgery_Performed · Chemotherapy</div>', unsafe_allow_html=True)
+                st.markdown('<div class="chart-card"><div class="chart-title">Surgery Performed</div><div class="chart-subtitle">Count plot with hue</div>', unsafe_allow_html=True)
                 st.pyplot(plots[11][1])
                 st.markdown('</div>', unsafe_allow_html=True)
+            
             with col3:
-                st.markdown('<div class="chart-card"><div class="chart-title">Family History</div><div class="chart-subtitle">countplot(x=\'Family_History\', hue=\'Tumor_Type\')</div>', unsafe_allow_html=True)
+                st.markdown('<div class="chart-card"><div class="chart-title">Family History</div><div class="chart-subtitle">Count plot with hue</div>', unsafe_allow_html=True)
                 st.pyplot(plots[12][1])
                 st.markdown('</div>', unsafe_allow_html=True)
             
             # Correlation Matrix & Feature Importance
-            st.markdown('<div class="chart-section-label">Correlation Matrix &amp; Feature Importance (sns.heatmap)</div>', unsafe_allow_html=True)
+            st.markdown('<div class="chart-section-label">Correlation & Feature Importance</div>', unsafe_allow_html=True)
             col1, col2 = st.columns(2)
+            
             with col1:
-                st.markdown('<div class="chart-card"><div class="chart-title">Correlation Matrix — Numerical Features</div><div class="chart-subtitle">sns.heatmap(corr, annot=True, cmap=\'coolwarm\')</div>', unsafe_allow_html=True)
+                st.markdown('<div class="chart-card"><div class="chart-title">Correlation Matrix</div><div class="chart-subtitle">Heatmap of numerical features</div>', unsafe_allow_html=True)
                 st.pyplot(plots[13][1])
                 st.markdown('</div>', unsafe_allow_html=True)
+            
             with col2:
-                st.markdown('<div class="chart-card"><div class="chart-title">Feature Importance — Random Forest</div><div class="chart-subtitle">Horizontal bar sorted by importance score</div>', unsafe_allow_html=True)
+                st.markdown('<div class="chart-card"><div class="chart-title">Feature Importance</div><div class="chart-subtitle">Random Forest top predictors</div>', unsafe_allow_html=True)
                 st.pyplot(plots[14][1])
                 st.markdown('</div>', unsafe_allow_html=True)
         
-        elif active_tab == 'models':
+        with tab3:
             # Model Results Tab
             st.markdown("""
             <div class="section-title-block">
                 <h2>Model Evaluation Results</h2>
-                <p>Confusion matrices, accuracy comparisons, and full metric breakdowns for KNN, Decision Tree, and Random Forest</p>
+                <p>Confusion matrices, accuracy comparisons, and full metric breakdowns</p>
             </div>
             """, unsafe_allow_html=True)
             
             # Get model results
-            results, confusion_matrices = create_model_comparison_plots(X_train, X_test, y_train, y_test)
+            with st.spinner("Training models for comparison..."):
+                results, confusion_matrices = create_model_comparison_plots(X_train, X_test, y_train, y_test)
             
             # Accuracy Comparison
             st.markdown('<div class="chart-section-label">Accuracy Comparison — Train vs Test</div>', unsafe_allow_html=True)
@@ -1893,11 +1820,11 @@ def main():
             
             x = np.arange(len(models))
             width = 0.35
-            ax.bar(x - width/2, train_acc, width, label='Train Accuracy', color='rgba(74,158,255,0.6)')
-            ax.bar(x + width/2, test_acc, width, label='Test Accuracy', color='rgba(0,200,200,0.6)')
+            bars1 = ax.bar(x - width/2, train_acc, width, label='Train Accuracy', color='rgba(74,158,255,0.6)')
+            bars2 = ax.bar(x + width/2, test_acc, width, label='Test Accuracy', color='rgba(0,200,200,0.6)')
             ax.set_xlabel('Model', color='#6b99b5')
             ax.set_ylabel('Accuracy', color='#6b99b5')
-            ax.set_title('Train vs Test Accuracy (All Models)', color='white')
+            ax.set_title('Train vs Test Accuracy Comparison', color='white')
             ax.set_xticks(x)
             ax.set_xticklabels(models, rotation=45, ha='right', color='#6b99b5', fontsize=8)
             ax.tick_params(colors='#6b99b5')
@@ -1908,13 +1835,22 @@ def main():
             for spine in ax.spines.values():
                 spine.set_color('rgba(0,200,200,0.12)')
             
+            # Add value labels on bars
+            for bars in [bars1, bars2]:
+                for bar in bars:
+                    height = bar.get_height()
+                    ax.text(bar.get_x() + bar.get_width()/2., height,
+                           f'{height:.3f}', ha='center', va='bottom', color='white', fontsize=7)
+            
+            plt.tight_layout()
+            
             col1, col2 = st.columns(2)
             with col1:
-                st.markdown('<div class="chart-card"><div class="chart-title">Train vs Test Accuracy</div><div class="chart-subtitle">Reveals overfitting — Decision Tree base has 100% train accuracy</div>', unsafe_allow_html=True)
+                st.markdown('<div class="chart-card"><div class="chart-title">Train vs Test Accuracy</div><div class="chart-subtitle">Reveals overfitting patterns</div>', unsafe_allow_html=True)
                 st.pyplot(fig)
                 st.markdown('</div>', unsafe_allow_html=True)
             
-            # Metrics Radar Chart (simplified as bar chart)
+            # Metrics Comparison Bar Chart
             with col2:
                 st.markdown('<div class="chart-card"><div class="chart-title">Metrics Comparison — Tuned Models</div><div class="chart-subtitle">Accuracy · Precision · Recall · F1</div>', unsafe_allow_html=True)
                 
@@ -1938,18 +1874,19 @@ def main():
                 ax2.set_xticks(x + width)
                 ax2.set_xticklabels(metrics, color='#6b99b5')
                 ax2.tick_params(colors='#6b99b5')
-                ax2.legend(facecolor='#0e2a42', labelcolor='#6b99b5')
+                ax2.legend(facecolor='#0e2a42', labelcolor='#6b99b5', fontsize=7)
                 ax2.set_ylim([0.8, 0.95])
                 ax2.set_facecolor('#0e2a42')
                 fig2.patch.set_facecolor('#0e2a42')
                 for spine in ax2.spines.values():
                     spine.set_color('rgba(0,200,200,0.12)')
                 
+                plt.tight_layout()
                 st.pyplot(fig2)
                 st.markdown('</div>', unsafe_allow_html=True)
             
             # Confusion Matrices
-            st.markdown('<div class="chart-section-label">Confusion Matrices (sns.heatmap — Benign / Malignant)</div>', unsafe_allow_html=True)
+            st.markdown('<div class="chart-section-label">Confusion Matrices (Benign / Malignant)</div>', unsafe_allow_html=True)
             
             col1, col2, col3 = st.columns(3)
             

@@ -1,5 +1,5 @@
 # ===============================
-# IPL ML ANALYTICS - OPTIMIZED VERSION
+# IPL ML ANALYTICS - AUTOMATIC EXECUTION VERSION
 # ===============================
 
 import streamlit as st
@@ -176,6 +176,82 @@ def get_data_quality_metrics(df):
         'memory_usage': round(df.memory_usage(deep=True).sum() / 1024**2, 2)
     }
 
+@st.cache_data
+def generate_eda_plots(df):
+    """Generate all EDA plots at once with caching"""
+    plots = {}
+    
+    # Get numeric columns (first 5 for performance)
+    numeric_cols = df.select_dtypes(include=np.number).columns.tolist()[:5]
+    
+    if numeric_cols:
+        # Distribution plots for each numeric column
+        for col in numeric_cols:
+            fig = make_subplots(rows=1, cols=2,
+                               subplot_titles=(f'Distribution of {col}', 'Box Plot'),
+                               specs=[[{'type': 'histogram'}, {'type': 'box'}]])
+            
+            fig.add_trace(go.Histogram(x=df[col], nbinsx=50, marker_color='#FF6B35'), row=1, col=1)
+            fig.add_trace(go.Box(y=df[col], marker_color='#00D4FF'), row=1, col=2)
+            
+            fig.update_layout(template='plotly_dark', height=400, showlegend=False,
+                            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+            
+            plots[f'dist_{col}'] = fig
+    
+    # Correlation heatmap
+    if len(numeric_cols) >= 2:
+        corr_matrix = df[numeric_cols].corr()
+        fig = go.Figure(data=go.Heatmap(
+            z=corr_matrix, x=corr_matrix.columns, y=corr_matrix.columns,
+            colorscale='RdBu', zmid=0, text=corr_matrix.round(2),
+            texttemplate='%{text}', textfont={"color": "white"}))
+        
+        fig.update_layout(template='plotly_dark', height=600,
+                         paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                         title="Correlation Heatmap")
+        
+        plots['correlation'] = fig
+    
+    # Scatter plots (first 2 pairs)
+    if len(numeric_cols) >= 2:
+        for i in range(min(2, len(numeric_cols)-1)):
+            x_col = numeric_cols[i]
+            y_col = numeric_cols[i+1]
+            
+            if STATSMODELS_AVAILABLE:
+                fig = px.scatter(df, x=x_col, y=y_col, trendline="ols",
+                               color_discrete_sequence=['#FF6B35'],
+                               title=f'{x_col} vs {y_col}')
+            else:
+                fig = px.scatter(df, x=x_col, y=y_col,
+                               color_discrete_sequence=['#FF6B35'],
+                               title=f'{x_col} vs {y_col}')
+            
+            fig.update_layout(template='plotly_dark',
+                            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                            height=400)
+            
+            plots[f'scatter_{i}'] = fig
+    
+    # Categorical analysis (first 2 categorical columns)
+    cat_cols = df.select_dtypes(include='object').columns.tolist()[:2]
+    for col in cat_cols:
+        value_counts = df[col].value_counts().head(10).reset_index()
+        value_counts.columns = [col, 'Count']
+        
+        fig = px.bar(value_counts, x=col, y='Count',
+                    title=f'Top 10 Values in {col}',
+                    color='Count', color_continuous_scale='viridis')
+        
+        fig.update_layout(template='plotly_dark',
+                         paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                         height=400)
+        
+        plots[f'cat_{col}'] = fig
+    
+    return plots
+
 # ===============================
 # CUSTOM CSS
 # ===============================
@@ -269,45 +345,27 @@ def load_css():
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(255, 107, 53, 0.4);
         }
+        
+        /* Tab styling */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 0.5rem;
+            border-radius: 50px;
+        }
+        
+        .stTabs [data-baseweb="tab"] {
+            border-radius: 50px !important;
+            padding: 0.5rem 1.5rem !important;
+            color: #A0A9C9 !important;
+        }
+        
+        .stTabs [aria-selected="true"] {
+            background: linear-gradient(135deg, #FF6B35, #00D4FF) !important;
+            color: white !important;
+        }
     </style>
     """, unsafe_allow_html=True)
-
-# ===============================
-# VISUALIZATION FUNCTIONS
-# ===============================
-@st.cache_data
-def create_distribution_plot(df, column):
-    """Create distribution plot with caching"""
-    fig = make_subplots(rows=1, cols=2,
-                        subplot_titles=('Distribution', 'Box Plot'),
-                        specs=[[{'type': 'histogram'}, {'type': 'box'}]])
-    
-    fig.add_trace(go.Histogram(x=df[column], nbinsx=50, marker_color='#FF6B35'), row=1, col=1)
-    fig.add_trace(go.Box(y=df[column], marker_color='#00D4FF'), row=1, col=2)
-    
-    fig.update_layout(template='plotly_dark', height=400, showlegend=False,
-                     paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-    
-    return fig
-
-@st.cache_data
-def create_correlation_heatmap(df):
-    """Create correlation heatmap with caching"""
-    numeric_cols = df.select_dtypes(include=np.number).columns
-    if len(numeric_cols) < 2:
-        return None
-    
-    corr_matrix = df[numeric_cols].corr()
-    
-    fig = go.Figure(data=go.Heatmap(
-        z=corr_matrix, x=corr_matrix.columns, y=corr_matrix.columns,
-        colorscale='RdBu', zmid=0, text=corr_matrix.round(2),
-        texttemplate='%{text}', textfont={"color": "white"}))
-    
-    fig.update_layout(template='plotly_dark', height=600,
-                     paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-    
-    return fig
 
 # ===============================
 # SESSION STATE INITIALIZATION
@@ -325,8 +383,9 @@ def init_session_state():
         'selected_features': [],
         'training_history': [],
         'statsmodels_available': STATSMODELS_AVAILABLE,
-        'eda_done': False,
-        'model_trained': False
+        'eda_plots': None,
+        'model_trained': False,
+        'initialized': False
     }
     
     for key, value in defaults.items():
@@ -368,6 +427,12 @@ def main():
                     df_sampled = sample_data(df, sample_size)
                     st.session_state.df = clean_data(df_sampled)
                     st.session_state.data_loaded = True
+                    
+                    # Auto-generate EDA plots when data is loaded
+                    if st.session_state.eda_plots is None:
+                        with st.spinner("Generating EDA plots..."):
+                            st.session_state.eda_plots = generate_eda_plots(st.session_state.df)
+                    
                     st.success(f"✅ Loaded: {len(st.session_state.df)} rows")
         
         # Navigation
@@ -447,61 +512,46 @@ def show_dashboard():
 def show_eda():
     st.markdown("## 🔍 Exploratory Data Analysis")
     
-    df = st.session_state.df
-    
-    # Use button to trigger EDA - prevents running on every rerun
-    if st.button("🚀 Run EDA", type="primary"):
-        with st.spinner("Running EDA..."):
-            time.sleep(1)  # Visual feedback
-            
-            # Analysis type selector
-            analysis_type = st.radio("Select Analysis", 
-                                    ["Univariate", "Bivariate", "Correlation"],
-                                    horizontal=True)
-            
-            if analysis_type == "Univariate":
-                st.markdown("### 📈 Univariate Analysis")
-                
-                # Limit to first 5 numeric columns for performance
-                numeric_cols = df.select_dtypes(include=np.number).columns.tolist()[:5]
-                
-                if numeric_cols:
-                    selected_col = st.selectbox("Select column", numeric_cols)
-                    fig = create_distribution_plot(df, selected_col)
-                    st.plotly_chart(fig, use_container_width=True)
-            
-            elif analysis_type == "Bivariate":
-                st.markdown("### 🔗 Bivariate Analysis")
-                
-                numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
-                
-                if len(numeric_cols) >= 2:
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        x_col = st.selectbox("X-axis", numeric_cols[:5], index=0)
-                    with col2:
-                        y_col = st.selectbox("Y-axis", numeric_cols[:5], index=min(1, 4))
-                    
-                    if STATSMODELS_AVAILABLE:
-                        fig = px.scatter(df, x=x_col, y=y_col, trendline="ols",
-                                       color_discrete_sequence=['#FF6B35'])
-                    else:
-                        fig = px.scatter(df, x=x_col, y=y_col,
-                                       color_discrete_sequence=['#FF6B35'])
-                    
-                    fig.update_layout(template='plotly_dark')
-                    st.plotly_chart(fig, use_container_width=True)
-                    
-                    corr = df[x_col].corr(df[y_col])
-                    st.metric("Correlation", f"{corr:.3f}")
-            
-            else:  # Correlation
-                st.markdown("### 🔥 Correlation Analysis")
-                fig = create_correlation_heatmap(df)
-                if fig:
-                    st.plotly_chart(fig, use_container_width=True)
-                else:
-                    st.warning("Need at least 2 numeric columns")
+    # Use cached plots - automatically generated when data was loaded
+    if st.session_state.eda_plots:
+        # Create tabs for different visualizations
+        tab1, tab2, tab3, tab4 = st.tabs(["📊 Distributions", "🔗 Correlations", "📈 Scatter Plots", "📋 Categorical"])
+        
+        with tab1:
+            st.markdown("### Feature Distributions")
+            # Show distribution plots
+            dist_plots = [plot for name, plot in st.session_state.eda_plots.items() if name.startswith('dist_')]
+            for i in range(0, len(dist_plots), 2):
+                cols = st.columns(2)
+                for j in range(2):
+                    if i + j < len(dist_plots):
+                        with cols[j]:
+                            st.plotly_chart(dist_plots[i + j], use_container_width=True)
+        
+        with tab2:
+            st.markdown("### Correlation Analysis")
+            if 'correlation' in st.session_state.eda_plots:
+                st.plotly_chart(st.session_state.eda_plots['correlation'], use_container_width=True)
+            else:
+                st.info("Not enough numeric columns for correlation analysis")
+        
+        with tab3:
+            st.markdown("### Scatter Plot Analysis")
+            scatter_plots = [plot for name, plot in st.session_state.eda_plots.items() if name.startswith('scatter_')]
+            for i in range(0, len(scatter_plots), 2):
+                cols = st.columns(2)
+                for j in range(2):
+                    if i + j < len(scatter_plots):
+                        with cols[j]:
+                            st.plotly_chart(scatter_plots[i + j], use_container_width=True)
+        
+        with tab4:
+            st.markdown("### Categorical Analysis")
+            cat_plots = [plot for name, plot in st.session_state.eda_plots.items() if name.startswith('cat_')]
+            for plot in cat_plots:
+                st.plotly_chart(plot, use_container_width=True)
+    else:
+        st.warning("No EDA plots available. Please reload the data.")
 
 def show_models():
     st.markdown("## 🤖 Machine Learning Models")
@@ -544,9 +594,14 @@ def show_models():
         else:
             model_choice = st.selectbox("Model", ["Random Forest", "Linear Regression"])
     
-    # Train button - only runs when clicked
-    if st.button("🚀 Train Model", type="primary"):
-        with st.spinner("Training model..."):
+    # Auto-train when parameters change
+    if (selected_features and target_col and 
+        (not st.session_state.model_trained or 
+         st.session_state.get('last_target') != target_col or
+         st.session_state.get('last_features') != selected_features or
+         st.session_state.get('last_model') != model_choice)):
+        
+        with st.spinner("Auto-training model..."):
             # Prepare data
             X = df_encoded[selected_features]
             y = df_encoded[target_col]
@@ -572,9 +627,7 @@ def show_models():
                 st.session_state.current_model = model
                 st.session_state.model_type = 'classification'
                 
-                st.markdown('<div class="success-message">✅ Model trained successfully!</div>', 
-                           unsafe_allow_html=True)
-                
+                # Display results
                 col1, col2 = st.columns(2)
                 col1.metric("Accuracy", f"{accuracy:.3f}")
                 col2.metric("CV Score", f"{cross_val_score(model, X, y, cv=5).mean():.3f}")
@@ -594,18 +647,25 @@ def show_models():
                 st.session_state.current_model = model
                 st.session_state.model_type = 'regression'
                 
-                st.markdown('<div class="success-message">✅ Model trained successfully!</div>', 
-                           unsafe_allow_html=True)
-                
+                # Display results
                 col1, col2 = st.columns(2)
                 col1.metric("MAE", f"{mae:.3f}")
                 col2.metric("R²", f"{r2:.3f}")
                 
                 # Regression plot
-                fig = make_subplots(rows=1, cols=2)
+                fig = make_subplots(rows=1, cols=2,
+                                   subplot_titles=('Actual vs Predicted', 'Residuals'))
                 fig.add_trace(go.Scatter(x=y_test, y=y_pred, mode='markers',
                                         marker_color='#FF6B35'), row=1, col=1)
                 fig.add_trace(go.Histogram(x=y_test - y_pred, marker_color='#00D4FF'), row=1, col=2)
+                
+                # Perfect prediction line
+                min_val = min(y_test.min(), y_pred.min())
+                max_val = max(y_test.max(), y_pred.max())
+                fig.add_trace(go.Scatter(x=[min_val, max_val], y=[min_val, max_val],
+                                        mode='lines', line=dict(color='white', dash='dash')),
+                            row=1, col=1)
+                
                 fig.update_layout(template='plotly_dark', height=400)
                 st.plotly_chart(fig, use_container_width=True)
             
@@ -636,12 +696,15 @@ def show_models():
                 st.session_state.selected_features = selected_features
             
             st.session_state.model_trained = True
+            st.session_state.last_target = target_col
+            st.session_state.last_features = selected_features
+            st.session_state.last_model = model_choice
 
 def show_predictions():
     st.markdown("## 📈 Make Predictions")
     
     if not st.session_state.model_trained:
-        st.warning("⚠️ Train a model first in the Models section")
+        st.warning("⚠️ Model will be trained automatically when you select features in the Models section")
         return
     
     st.markdown("### Enter values")
@@ -663,7 +726,8 @@ def show_predictions():
                 options = st.session_state.df[feature].unique().tolist()[:10]
                 input_data[feature] = st.selectbox(feature, options)
     
-    if st.button("🔮 Predict", type="primary"):
+    # Auto-predict when inputs change
+    if input_data and st.button("🔮 Predict", type="primary"):
         with st.spinner("Predicting..."):
             # Prepare input
             input_df = pd.DataFrame([input_data])

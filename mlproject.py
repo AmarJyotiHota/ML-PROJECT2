@@ -5,6 +5,8 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+from matplotlib.patches import Rectangle
 import seaborn as sns
 from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.pipeline import Pipeline
@@ -25,12 +27,13 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS (same as before, but I'll keep it concise here)
+# Custom CSS to match the HTML/CSS design exactly
 def load_css():
     css = """
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Sora:wght@300;400;500;600;700&display=swap');
         
+        /* Variables */
         :root {
             --bg: #04101f;
             --bg2: #071828;
@@ -42,22 +45,25 @@ def load_css():
             --teal: #00c8c8;
             --teal-dim: rgba(0,200,200,0.08);
             --amber: #f4a441;
-            --amber-dim: rgba(244,164,65,0.10);
             --green: #3de89e;
             --red: #f45f6f;
+            --blue: #4a9eff;
             --text: #d6eaf0;
             --text-dim: #6b99b5;
             --text-muted: #3e6880;
             --radius: 12px;
             --radius-sm: 8px;
+            --shadow-sm: 0 2px 16px rgba(0,0,0,0.35);
         }
         
+        /* Main container */
         .stApp {
             background: var(--bg);
             color: var(--text);
             font-family: 'Sora', sans-serif;
         }
         
+        /* Background mesh */
         .stApp::before {
             content: '';
             position: fixed; inset: 0;
@@ -78,16 +84,17 @@ def load_css():
             z-index: 0;
         }
         
+        /* Header */
         .custom-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 28px 0 20px;
             border-bottom: 1px solid var(--border);
-            margin-bottom: 48px;
+            margin-bottom: 36px;
             flex-wrap: wrap;
             gap: 16px;
-            animation: fadeDown 0.6s ease both;
+            animation: fadeDown .6s ease both;
             position: relative;
             z-index: 1;
         }
@@ -103,13 +110,16 @@ def load_css():
             border-radius: 10px;
             background: linear-gradient(135deg, var(--teal) 0%, #006f8e 100%);
             display: grid; place-items: center;
-            box-shadow: 0 0 24px rgba(0,200,200,0.3);
+            box-shadow: 0 0 24px rgba(0,200,200,.3);
+            flex-shrink: 0;
         }
         
         .logo-mark svg {
             width: 22px; height: 22px;
             stroke: white;
             stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
             fill: none;
         }
         
@@ -117,15 +127,16 @@ def load_css():
             font-family: 'Cormorant Garamond', serif;
             font-size: 1.65rem;
             font-weight: 500;
-            color: #ffffff;
+            color: #fff;
+            letter-spacing: .02em;
             line-height: 1;
         }
         
         .site-subtitle {
             font-family: 'DM Mono', monospace;
-            font-size: 0.65rem;
+            font-size: .65rem;
             color: var(--teal);
-            letter-spacing: 0.16em;
+            letter-spacing: .16em;
             text-transform: uppercase;
             margin-top: 4px;
         }
@@ -138,8 +149,8 @@ def load_css():
         
         .badge {
             font-family: 'DM Mono', monospace;
-            font-size: 0.62rem;
-            letter-spacing: 0.12em;
+            font-size: .62rem;
+            letter-spacing: .12em;
             text-transform: uppercase;
             padding: 5px 12px;
             border-radius: 20px;
@@ -151,9 +162,10 @@ def load_css():
         .badge.active {
             border-color: var(--teal);
             color: var(--teal);
-            box-shadow: 0 0 12px rgba(0,200,200,0.15);
+            box-shadow: 0 0 12px rgba(0,200,200,.15);
         }
         
+        /* Hero Strip */
         .hero-strip {
             background: var(--surface);
             border: 1px solid var(--border);
@@ -162,9 +174,9 @@ def load_css():
             display: flex;
             align-items: center;
             gap: 32px;
-            margin-bottom: 40px;
+            margin-bottom: 28px;
             flex-wrap: wrap;
-            animation: fadeUp 0.6s 0.1s ease both;
+            animation: fadeUp .6s .1s ease both;
             position: relative;
             overflow: hidden;
             z-index: 1;
@@ -193,7 +205,7 @@ def load_css():
         }
         
         .hero-text p {
-            font-size: 0.82rem;
+            font-size: .82rem;
             color: var(--text-dim);
             margin-top: 8px;
             max-width: 520px;
@@ -202,18 +214,18 @@ def load_css():
         
         .hero-stats {
             display: flex;
-            gap: 24px;
+            gap: 20px;
             margin-left: auto;
             flex-wrap: wrap;
         }
         
         .stat-box {
             text-align: center;
-            padding: 14px 22px;
+            padding: 14px 20px;
             border-radius: var(--radius-sm);
             background: var(--bg3);
             border: 1px solid var(--border);
-            min-width: 90px;
+            min-width: 80px;
         }
         
         .stat-box .val {
@@ -225,24 +237,123 @@ def load_css():
         }
         
         .stat-box .lbl {
-            font-size: 0.62rem;
-            letter-spacing: 0.1em;
+            font-size: .62rem;
+            letter-spacing: .1em;
             text-transform: uppercase;
             color: var(--text-muted);
             margin-top: 3px;
             display: block;
         }
         
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 28px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0;
+            animation: fadeUp .5s .15s ease both;
+        }
+        
+        .tab-btn {
+            font-family: 'Sora', sans-serif;
+            font-size: .78rem;
+            font-weight: 500;
+            padding: 11px 22px;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color .2s, border-color .2s;
+            margin-bottom: -1px;
+            letter-spacing: .02em;
+        }
+        
+        .tab-btn:hover {
+            color: var(--text-dim);
+        }
+        
+        .tab-btn.active {
+            color: var(--teal);
+            border-bottom-color: var(--teal);
+        }
+        
+        /* Section Titles */
+        .section-title-block {
+            margin-bottom: 28px;
+        }
+        
+        .section-title-block h2 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.8rem;
+            font-weight: 400;
+            color: #fff;
+        }
+        
+        .section-title-block p {
+            font-size: .78rem;
+            color: var(--text-dim);
+            margin-top: 6px;
+            line-height: 1.6;
+        }
+        
+        .chart-section-label {
+            font-family: 'DM Mono', monospace;
+            font-size: .62rem;
+            letter-spacing: .18em;
+            text-transform: uppercase;
+            color: var(--teal);
+            margin: 28px 0 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .chart-section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+        
+        /* Chart Cards */
+        .chart-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px 18px 14px;
+            box-shadow: var(--shadow-sm);
+            animation: fadeUp .5s ease both;
+            margin-bottom: 18px;
+        }
+        
+        .chart-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.05rem;
+            font-weight: 500;
+            color: #fff;
+            margin-bottom: 3px;
+        }
+        
+        .chart-subtitle {
+            font-family: 'DM Mono', monospace;
+            font-size: .58rem;
+            letter-spacing: .05em;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+        
+        /* Cards */
         .card {
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: var(--radius);
             overflow: hidden;
             box-shadow: var(--shadow-sm);
-            animation: fadeUp 0.6s 0.2s ease both;
+            animation: fadeUp .6s .2s ease both;
             margin-bottom: 22px;
-            position: relative;
-            z-index: 1;
         }
         
         .card-header {
@@ -251,7 +362,7 @@ def load_css():
             gap: 12px;
             padding: 18px 24px;
             border-bottom: 1px solid var(--border);
-            background: rgba(0,0,0,0.15);
+            background: rgba(0,0,0,.15);
         }
         
         .card-header .icon {
@@ -261,7 +372,8 @@ def load_css():
             border: 1px solid var(--border-hi);
             display: grid; place-items: center;
             color: var(--teal);
-            font-size: 0.9rem;
+            font-size: .9rem;
+            flex-shrink: 0;
         }
         
         .card-header h2 {
@@ -269,12 +381,12 @@ def load_css():
             font-size: 1.2rem;
             font-weight: 500;
             color: #fff;
-            letter-spacing: 0.02em;
+            letter-spacing: .02em;
             margin: 0;
         }
         
         .card-header p {
-            font-size: 0.7rem;
+            font-size: .7rem;
             color: var(--text-muted);
             margin: 1px 0 0 0;
         }
@@ -283,80 +395,15 @@ def load_css():
             padding: 24px;
         }
         
-        .pipeline {
-            display: flex;
-            align-items: center;
-            gap: 0;
-            padding: 6px 0;
-            overflow-x: auto;
-        }
-        
-        .pipeline::-webkit-scrollbar {
-            display: none;
-        }
-        
-        .pipe-step {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 6px;
-            flex: 1;
-            min-width: 72px;
-        }
-        
-        .pipe-dot {
-            width: 36px; height: 36px;
-            border-radius: 50%;
-            background: var(--bg3);
-            border: 1.5px solid var(--border);
-            display: grid; place-items: center;
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            transition: all 0.3s;
-        }
-        
-        .pipe-step.active .pipe-dot {
-            background: var(--teal-dim);
-            border-color: var(--teal);
-            color: var(--teal);
-            box-shadow: 0 0 14px rgba(0,200,200,0.2);
-        }
-        
-        .pipe-step .pipe-label {
-            font-size: 0.58rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-muted);
-            text-align: center;
-            line-height: 1.3;
-        }
-        
-        .pipe-step.active .pipe-label {
-            color: var(--teal);
-        }
-        
-        .pipe-connector {
-            flex: 0.8;
-            height: 1px;
-            background: var(--border);
-            min-width: 16px;
-            position: relative;
-            top: -13px;
-        }
-        
-        .pipe-connector.active {
-            background: var(--teal);
-            box-shadow: 0 0 6px rgba(0,200,200,0.3);
-        }
-        
+        /* Form */
         .form-section {
-            margin-bottom: 28px;
+            margin-bottom: 26px;
         }
         
         .section-label {
             font-family: 'DM Mono', monospace;
-            font-size: 0.62rem;
-            letter-spacing: 0.18em;
+            font-size: .62rem;
+            letter-spacing: .18em;
             text-transform: uppercase;
             color: var(--teal);
             margin-bottom: 14px;
@@ -374,16 +421,39 @@ def load_css():
         
         .fields-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
             gap: 14px;
         }
         
+        /* Override Streamlit form elements */
+        .stSlider > div > div {
+            background: transparent !important;
+        }
+        
+        .stSlider label {
+            font-family: 'DM Mono', monospace !important;
+            color: var(--text-dim) !important;
+        }
+        
+        .stSelectbox label {
+            font-family: 'DM Mono', monospace !important;
+            color: var(--text-dim) !important;
+        }
+        
+        .stSelectbox > div > div {
+            background: var(--bg3) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: var(--radius-sm) !important;
+            color: var(--text) !important;
+        }
+        
+        /* Result Card */
         .result-card {
             border-radius: var(--radius);
             border: 1px solid var(--border);
             overflow: hidden;
             margin-top: 20px;
-            animation: fadeUp 0.5s ease both;
+            animation: fadeUp .5s ease both;
             display: none;
         }
         
@@ -392,11 +462,11 @@ def load_css():
         }
         
         .result-card.benign {
-            border-color: rgba(61,232,158,0.35);
+            border-color: rgba(61,232,158,.35);
         }
         
         .result-card.malignant {
-            border-color: rgba(244,95,111,0.35);
+            border-color: rgba(244,95,111,.35);
         }
         
         .result-header {
@@ -407,11 +477,11 @@ def load_css():
         }
         
         .result-card.benign .result-header {
-            background: rgba(61,232,158,0.07);
+            background: rgba(61,232,158,.07);
         }
         
         .result-card.malignant .result-header {
-            background: rgba(244,95,111,0.07);
+            background: rgba(244,95,111,.07);
         }
         
         .result-icon {
@@ -419,15 +489,16 @@ def load_css():
             border-radius: 50%;
             display: grid; place-items: center;
             font-size: 1.4rem;
+            flex-shrink: 0;
         }
         
         .result-card.benign .result-icon {
-            background: rgba(61,232,158,0.12);
+            background: rgba(61,232,158,.12);
             color: var(--green);
         }
         
         .result-card.malignant .result-icon {
-            background: rgba(244,95,111,0.12);
+            background: rgba(244,95,111,.12);
             color: var(--red);
         }
         
@@ -447,7 +518,7 @@ def load_css():
         }
         
         .result-sub {
-            font-size: 0.72rem;
+            font-size: .72rem;
             color: var(--text-muted);
             margin-top: 4px;
         }
@@ -456,20 +527,30 @@ def load_css():
             padding: 18px 24px;
         }
         
+        .conf-section-label {
+            font-family: 'DM Mono', monospace;
+            font-size: .62rem;
+            letter-spacing: .14em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+        
         .confidence-row {
             display: flex;
             align-items: center;
             gap: 12px;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }
         
         .conf-label {
             font-family: 'DM Mono', monospace;
-            font-size: 0.65rem;
-            letter-spacing: 0.12em;
+            font-size: .65rem;
+            letter-spacing: .1em;
             text-transform: uppercase;
             color: var(--text-muted);
-            width: 80px;
+            width: 82px;
+            flex-shrink: 0;
         }
         
         .conf-bar {
@@ -483,7 +564,7 @@ def load_css():
         .conf-fill {
             height: 100%;
             border-radius: 3px;
-            transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+            transition: width .9s cubic-bezier(.22,1,.36,1);
             width: 0;
         }
         
@@ -497,12 +578,83 @@ def load_css():
         
         .conf-pct {
             font-family: 'DM Mono', monospace;
-            font-size: 0.78rem;
+            font-size: .78rem;
             color: var(--text);
             width: 42px;
             text-align: right;
+            flex-shrink: 0;
         }
         
+        /* Pipeline */
+        .pipeline {
+            display: flex;
+            align-items: center;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        
+        .pipeline::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .pipe-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+            min-width: 70px;
+            cursor: default;
+        }
+        
+        .pipe-dot {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            background: var(--bg3);
+            border: 1.5px solid var(--border);
+            display: grid; place-items: center;
+            color: var(--text-muted);
+            font-size: .85rem;
+            transition: all .3s;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .pipe-step.active .pipe-dot {
+            background: var(--teal-dim);
+            border-color: var(--teal);
+            color: var(--teal);
+            box-shadow: 0 0 14px rgba(0,200,200,.2);
+        }
+        
+        .pipe-label {
+            font-size: .58rem;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: var(--text-muted);
+            text-align: center;
+            line-height: 1.3;
+        }
+        
+        .pipe-step.active .pipe-label {
+            color: var(--teal);
+        }
+        
+        .pipe-connector {
+            flex: .8;
+            height: 1px;
+            background: var(--border);
+            min-width: 16px;
+            position: relative;
+            top: -13px;
+        }
+        
+        .pipe-connector.active {
+            background: var(--teal);
+            box-shadow: 0 0 6px rgba(0,200,200,.3);
+        }
+        
+        /* Model Table */
         .model-table {
             width: 100%;
             border-collapse: collapse;
@@ -510,8 +662,8 @@ def load_css():
         
         .model-table th {
             font-family: 'DM Mono', monospace;
-            font-size: 0.6rem;
-            letter-spacing: 0.14em;
+            font-size: .6rem;
+            letter-spacing: .14em;
             text-transform: uppercase;
             color: var(--text-muted);
             padding: 0 0 12px;
@@ -526,10 +678,10 @@ def load_css():
         
         .model-table td {
             font-family: 'DM Mono', monospace;
-            font-size: 0.78rem;
+            font-size: .78rem;
             color: var(--text-dim);
             padding: 11px 0;
-            border-bottom: 1px solid rgba(0,200,200,0.05);
+            border-bottom: 1px solid rgba(0,200,200,.05);
         }
         
         .model-table td:not(:first-child) {
@@ -539,67 +691,18 @@ def load_css():
         .model-name {
             color: var(--text);
             font-weight: 500;
-            font-size: 0.75rem;
+            font-size: .75rem;
         }
         
         .best-tag {
-            font-size: 0.55rem;
+            font-size: .55rem;
             padding: 2px 6px;
             border-radius: 4px;
-            background: rgba(0,200,200,0.12);
+            background: rgba(0,200,200,.12);
             color: var(--teal);
-            border: 1px solid rgba(0,200,200,0.2);
-            letter-spacing: 0.06em;
+            border: 1px solid rgba(0,200,200,.2);
+            letter-spacing: .06em;
             margin-left: 6px;
-        }
-        
-        .feature-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        
-        .feature-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 14px;
-            border-radius: var(--radius-sm);
-            background: var(--bg3);
-            border: 1px solid var(--border);
-            font-size: 0.75rem;
-        }
-        
-        .feat-name {
-            color: var(--text-dim);
-        }
-        
-        .feat-imp {
-            font-family: 'DM Mono', monospace;
-            color: var(--teal);
-            font-size: 0.7rem;
-        }
-        
-        .feat-bar-wrap {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex: 1;
-            margin: 0 12px;
-        }
-        
-        .feat-bar {
-            flex: 1;
-            height: 3px;
-            border-radius: 2px;
-            background: var(--surface2);
-            overflow: hidden;
-        }
-        
-        .feat-fill {
-            height: 100%;
-            border-radius: 2px;
-            background: linear-gradient(90deg, var(--teal), #00a0a0);
         }
         
         .metric-bar-wrap {
@@ -625,11 +728,282 @@ def load_css():
         
         .mini-val {
             font-family: 'DM Mono', monospace;
-            font-size: 0.7rem;
+            font-size: .7rem;
             color: var(--text-dim);
             width: 36px;
+            flex-shrink: 0;
         }
         
+        /* Feature List */
+        .feature-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .feature-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            background: var(--bg3);
+            border: 1px solid var(--border);
+            font-size: .75rem;
+        }
+        
+        .feat-name {
+            color: var(--text-dim);
+        }
+        
+        .feat-imp {
+            font-family: 'DM Mono', monospace;
+            color: var(--teal);
+            font-size: .7rem;
+        }
+        
+        .feat-bar-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            margin: 0 12px;
+        }
+        
+        .feat-bar {
+            flex: 1;
+            height: 3px;
+            border-radius: 2px;
+            background: var(--surface2);
+            overflow: hidden;
+        }
+        
+        .feat-fill {
+            height: 100%;
+            border-radius: 2px;
+            background: linear-gradient(90deg, var(--teal), #00a0a0);
+        }
+        
+        /* Confusion Matrix */
+        .confusion-matrix {
+            padding: 16px 10px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .cm-labels-x {
+            display: grid;
+            grid-template-columns: 60px 1fr 1fr;
+            gap: 6px;
+            text-align: center;
+        }
+        
+        .cm-labels-x span {
+            font-family: 'DM Mono', monospace;
+            font-size: .62rem;
+            color: var(--text-muted);
+            letter-spacing: .04em;
+            padding-bottom: 4px;
+        }
+        
+        .cm-row {
+            display: grid;
+            grid-template-columns: 60px 1fr 1fr;
+            gap: 6px;
+            align-items: center;
+        }
+        
+        .cm-row-label {
+            font-family: 'DM Mono', monospace;
+            font-size: .6rem;
+            color: var(--text-muted);
+            text-align: right;
+            padding-right: 8px;
+            line-height: 1.4;
+        }
+        
+        .cm-cell {
+            border-radius: var(--radius-sm);
+            padding: 16px 8px;
+            text-align: center;
+            font-family: 'DM Mono', monospace;
+            font-size: 1.4rem;
+            font-weight: 500;
+            position: relative;
+        }
+        
+        .cm-cell-label {
+            font-size: .55rem;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            margin-top: 4px;
+            font-weight: 400;
+        }
+        
+        .cm-tn {
+            background: rgba(61,232,158,.12);
+            border: 1px solid rgba(61,232,158,.25);
+            color: var(--green);
+        }
+        
+        .cm-tn .cm-cell-label {
+            color: rgba(61,232,158,.6);
+        }
+        
+        .cm-tp {
+            background: rgba(61,232,158,.12);
+            border: 1px solid rgba(61,232,158,.25);
+            color: var(--green);
+        }
+        
+        .cm-tp .cm-cell-label {
+            color: rgba(61,232,158,.6);
+        }
+        
+        .cm-fp {
+            background: rgba(244,95,111,.10);
+            border: 1px solid rgba(244,95,111,.22);
+            color: var(--red);
+        }
+        
+        .cm-fp .cm-cell-label {
+            color: rgba(244,95,111,.6);
+        }
+        
+        .cm-fn {
+            background: rgba(244,95,111,.10);
+            border: 1px solid rgba(244,95,111,.22);
+            color: var(--red);
+        }
+        
+        .cm-fn .cm-cell-label {
+            color: rgba(244,95,111,.6);
+        }
+        
+        .cm-stats {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            padding-top: 6px;
+            font-family: 'DM Mono', monospace;
+            font-size: .65rem;
+            color: var(--text-muted);
+        }
+        
+        .cm-stats b {
+            color: var(--teal);
+        }
+        
+        /* Full Metrics Table */
+        .full-metrics-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .full-metrics-table th {
+            font-family: 'DM Mono', monospace;
+            font-size: .62rem;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding: 0 12px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-weight: 400;
+            white-space: nowrap;
+        }
+        
+        .full-metrics-table td {
+            font-family: 'DM Mono', monospace;
+            font-size: .78rem;
+            color: var(--text-dim);
+            padding: 11px 12px;
+            border-bottom: 1px solid rgba(0,200,200,.05);
+        }
+        
+        .gap-val {
+            color: var(--amber);
+        }
+        
+        .gap-val.red {
+            color: var(--red);
+        }
+        
+        .status-tag {
+            font-size: .6rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            letter-spacing: .06em;
+            font-weight: 500;
+        }
+        
+        .status-tag.ok {
+            background: rgba(61,232,158,.1);
+            color: var(--green);
+            border: 1px solid rgba(61,232,158,.2);
+        }
+        
+        .status-tag.overfit {
+            background: rgba(244,95,111,.1);
+            color: var(--red);
+            border: 1px solid rgba(244,95,111,.2);
+        }
+        
+        .status-tag.best {
+            background: rgba(0,200,200,.12);
+            color: var(--teal);
+            border: 1px solid rgba(0,200,200,.25);
+        }
+        
+        /* Buttons */
+        .stButton > button {
+            background: linear-gradient(135deg, #00b8b8 0%, #007a8a 100%);
+            color: white;
+            border: none;
+            padding: 13px 36px;
+            border-radius: var(--radius-sm);
+            font-family: 'Sora', sans-serif;
+            font-size: .82rem;
+            font-weight: 600;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all .2s;
+            box-shadow: 0 4px 22px rgba(0,180,180,.35);
+            width: 100%;
+        }
+        
+        .stButton > button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 32px rgba(0,200,200,.4);
+            filter: brightness(1.08);
+        }
+        
+        .stButton.reset > button {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            box-shadow: none;
+        }
+        
+        .stButton.reset > button:hover {
+            border-color: var(--border-hi);
+            color: var(--text);
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .disclaimer {
+            font-size: .65rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-top: 12px;
+            display: block;
+        }
+        
+        /* Footer */
         footer {
             border-top: 1px solid var(--border);
             padding: 24px 0 0;
@@ -639,16 +1013,17 @@ def load_css():
             justify-content: space-between;
             flex-wrap: wrap;
             gap: 12px;
-            font-size: 0.68rem;
+            font-size: .68rem;
             color: var(--text-muted);
             font-family: 'DM Mono', monospace;
-            animation: fadeUp 0.6s 0.4s ease both;
+            animation: fadeUp .6s .4s ease both;
         }
         
         footer strong {
             color: var(--text-dim);
         }
         
+        /* Animations */
         @keyframes fadeDown {
             from { opacity: 0; transform: translateY(-12px); }
             to { opacity: 1; transform: translateY(0); }
@@ -659,67 +1034,68 @@ def load_css():
             to { opacity: 1; transform: translateY(0); }
         }
         
+        /* Hide Streamlit branding */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         .stApp > header {visibility: hidden;}
         
-        .stButton > button {
-            background: linear-gradient(135deg, #00b8b8 0%, #007a8a 100%);
-            color: white;
-            border: none;
-            padding: 13px 36px;
-            border-radius: var(--radius-sm);
-            font-family: 'Sora', sans-serif;
-            font-size: 0.82rem;
-            font-weight: 600;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 4px 22px rgba(0,180,180,0.35);
-            width: 100%;
-        }
-        
-        .stButton > button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 8px 32px rgba(0,200,200,0.4);
-            filter: brightness(1.08);
-        }
-        
-        .disclaimer {
-            font-size: 0.65rem;
-            color: var(--text-muted);
-            line-height: 1.5;
-            margin-top: 12px;
-            display: block;
-        }
-        
+        /* Layout */
         .block-container {
             padding-top: 1rem;
             padding-bottom: 0rem;
-            max-width: 1280px;
+            max-width: 1320px;
         }
         
         .row-widget.stHorizontal {
-            gap: 28px;
+            gap: 26px;
         }
         
-        /* Graph container styling */
-        .graph-container {
-            background: var(--bg3);
-            border-radius: var(--radius-sm);
-            padding: 16px;
-            border: 1px solid var(--border);
-            margin-bottom: 20px;
+        /* Grid layouts */
+        .charts-grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+            margin-bottom: 4px;
         }
         
-        .graph-title {
-            font-family: 'DM Mono', monospace;
-            font-size: 0.7rem;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: var(--teal);
-            margin-bottom: 12px;
+        .charts-grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+            margin-bottom: 4px;
+        }
+        
+        .charts-grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 18px;
+            margin-bottom: 4px;
+        }
+        
+        @media (max-width: 1100px) {
+            .charts-grid-4 { grid-template-columns: repeat(2, 1fr); }
+            .charts-grid-3 { grid-template-columns: repeat(2, 1fr); }
+        }
+        
+        @media (max-width: 720px) {
+            .charts-grid-4, .charts-grid-3, .charts-grid-2 { grid-template-columns: 1fr; }
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 26px;
+            align-items: start;
+        }
+        
+        @media (max-width: 1024px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+        
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
         }
     </style>
     """
@@ -787,19 +1163,35 @@ def render_hero():
     """
     st.markdown(hero_html, unsafe_allow_html=True)
 
+# Tab navigation
+def render_tabs(active_tab):
+    tabs_html = f"""
+    <div class="tab-nav">
+        <button class="tab-btn {'active' if active_tab == 'predict' else ''}" onclick="switchTab('predict')">⚡ Predict</button>
+        <button class="tab-btn {'active' if active_tab == 'eda' else ''}" onclick="switchTab('eda')">📊 EDA &amp; Graphs</button>
+        <button class="tab-btn {'active' if active_tab == 'models' else ''}" onclick="switchTab('models')">🏆 Model Results</button>
+    </div>
+    <script>
+    function switchTab(tab) {{
+        window.location.href = window.location.pathname + '?tab=' + tab;
+    }}
+    </script>
+    """
+    st.markdown(tabs_html, unsafe_allow_html=True)
+
 # Pipeline tracker
 def render_pipeline(step=0):
     steps = ["📥", "⚙️", "🧠", "🌿", "🌲", "📊"]
-    labels = ["Data Input", "Pre-process", "KNN Model", "Decision Tree", "Random Forest", "Result Output"]
+    labels = ["Data<br>Input", "Pre-<br>process", "KNN", "Dec.<br>Tree", "Rnd.<br>Forest", "Result"]
     
     pipeline_html = '<div class="card" style="margin-bottom:22px;"><div class="card-body" style="padding:18px 24px;"><div class="pipeline">'
     
     for i in range(len(steps)):
         active_class = " active" if i <= step else ""
         pipeline_html += f'''
-            <div class="pipe-step{active_class}" data-step="{i}">
+            <div class="pipe-step{active_class}">
                 <div class="pipe-dot">{steps[i]}</div>
-                <div class="pipe-label">{labels[i].replace(" ", "<br>")}</div>
+                <div class="pipe-label">{labels[i]}</div>
             </div>
         '''
         if i < len(steps) - 1:
@@ -841,176 +1233,248 @@ cat_features = [
     'Chemotherapy', 'Family_History'
 ]
 
-# Function to create EDA plots
+# Create EDA plots
 def create_eda_plots(df):
-    plots = []
+    # Set style for all plots
+    plt.style.use('dark_background')
     
-    # 1. Target Class Distribution
-    fig1, ax1 = plt.subplots(figsize=(10, 5))
-    df['Tumor_Type'].value_counts().plot(kind='bar', color=[var('--green'), var('--red')], ax=ax1)
-    ax1.set_title('Target Class Distribution', color='white', fontsize=14)
-    ax1.set_xlabel('Tumor Type', color='var(--text-dim)')
-    ax1.set_ylabel('Count', color='var(--text-dim)')
-    ax1.tick_params(colors='var(--text-dim)')
-    ax1.set_xticklabels(['Benign', 'Malignant'], rotation=0)
-    for spine in ax1.spines.values():
-        spine.set_color('var(--border)')
-    fig1.patch.set_facecolor('var(--bg3)')
-    ax1.set_facecolor('var(--bg3)')
-    plots.append(('Target Class Distribution', fig1))
+    # 1. Target Class Distribution (Doughnut chart)
+    fig1, ax1 = plt.subplots(figsize=(5, 4))
+    benign_count = (df['Tumor_Type'] == 'Benign').sum()
+    malignant_count = (df['Tumor_Type'] == 'Malignant').sum()
+    wedges, texts, autotexts = ax1.pie(
+        [benign_count, malignant_count], 
+        labels=['Benign', 'Malignant'],
+        colors=['#3de89e', '#f45f6f'],
+        autopct='%1.0f%%',
+        startangle=90,
+        wedgeprops=dict(width=0.7, edgecolor='none')
+    )
+    for autotext in autotexts:
+        autotext.set_color('white')
+        autotext.set_fontsize(9)
+    for text in texts:
+        text.set_color('#6b99b5')
+        text.set_fontsize(9)
+    ax1.set_facecolor('#0e2a42')
+    fig1.patch.set_facecolor('#0e2a42')
     
-    # 2. Age Distribution by Tumor Type
-    fig2, ax2 = plt.subplots(figsize=(10, 5))
-    for tumor_type in ['Benign', 'Malignant']:
-        subset = df[df['Tumor_Type'] == tumor_type]
-        ax2.hist(subset['Age'], alpha=0.7, label=tumor_type, bins=20, 
-                color=var('--green') if tumor_type == 'Benign' else var('--red'))
-    ax2.set_title('Age Distribution by Tumor Type', color='white', fontsize=14)
-    ax2.set_xlabel('Age', color='var(--text-dim)')
-    ax2.set_ylabel('Frequency', color='var(--text-dim)')
-    ax2.legend()
-    ax2.tick_params(colors='var(--text-dim)')
-    for spine in ax2.spines.values():
-        spine.set_color('var(--border)')
-    fig2.patch.set_facecolor('var(--bg3)')
-    ax2.set_facecolor('var(--bg3)')
-    plots.append(('Age Distribution by Tumor Type', fig2))
+    # 2. Age Distribution by Tumor Type (Histogram)
+    fig2, ax2 = plt.subplots(figsize=(5, 4))
+    for tumor_type, color in [('Benign', '#3de89e'), ('Malignant', '#f45f6f')]:
+        subset = df[df['Tumor_Type'] == tumor_type]['Age']
+        ax2.hist(subset, bins=20, alpha=0.6, label=tumor_type, color=color)
+    ax2.set_xlabel('Age', color='#6b99b5', fontsize=9)
+    ax2.set_ylabel('Frequency', color='#6b99b5', fontsize=9)
+    ax2.legend(facecolor='#0e2a42', labelcolor='#6b99b5')
+    ax2.tick_params(colors='#6b99b5')
+    ax2.set_facecolor('#0e2a42')
+    fig2.patch.set_facecolor('#0e2a42')
     
     # 3. Tumor Size Distribution
-    fig3, ax3 = plt.subplots(figsize=(10, 5))
-    for tumor_type in ['Benign', 'Malignant']:
-        subset = df[df['Tumor_Type'] == tumor_type]
-        ax3.hist(subset['Tumor_Size'], alpha=0.7, label=tumor_type, bins=20,
-                color=var('--green') if tumor_type == 'Benign' else var('--red'))
-    ax3.set_title('Tumor Size Distribution by Tumor Type', color='white', fontsize=14)
-    ax3.set_xlabel('Tumor Size (cm)', color='var(--text-dim)')
-    ax3.set_ylabel('Frequency', color='var(--text-dim)')
-    ax3.legend()
-    ax3.tick_params(colors='var(--text-dim)')
-    for spine in ax3.spines.values():
-        spine.set_color('var(--border)')
-    fig3.patch.set_facecolor('var(--bg3)')
-    ax3.set_facecolor('var(--bg3)')
-    plots.append(('Tumor Size Distribution', fig3))
+    fig3, ax3 = plt.subplots(figsize=(5, 4))
+    for tumor_type, color in [('Benign', '#3de89e'), ('Malignant', '#f45f6f')]:
+        subset = df[df['Tumor_Type'] == tumor_type]['Tumor_Size']
+        ax3.hist(subset, bins=20, alpha=0.6, label=tumor_type, color=color)
+    ax3.set_xlabel('Tumor Size (cm)', color='#6b99b5', fontsize=9)
+    ax3.set_ylabel('Frequency', color='#6b99b5', fontsize=9)
+    ax3.legend(facecolor='#0e2a42', labelcolor='#6b99b5')
+    ax3.tick_params(colors='#6b99b5')
+    ax3.set_facecolor('#0e2a42')
+    fig3.patch.set_facecolor('#0e2a42')
     
     # 4. Tumor Growth Rate Boxplot
-    fig4, ax4 = plt.subplots(figsize=(10, 6))
-    benign_data = [df[df['Tumor_Type'] == 'Benign']['Tumor_Growth_Rate']]
-    malignant_data = [df[df['Tumor_Type'] == 'Malignant']['Tumor_Growth_Rate']]
-    bp = ax4.boxplot([benign_data[0], malignant_data[0]], labels=['Benign', 'Malignant'],
-                     patch_artist=True,
-                     boxprops=dict(color='var(--teal)'),
-                     whiskerprops=dict(color='var(--teal)'),
-                     capprops=dict(color='var(--teal)'),
-                     medianprops=dict(color='var(--amber)', linewidth=2))
-    bp['boxes'][0].set_facecolor(var('--green'))
-    bp['boxes'][1].set_facecolor(var('--red'))
-    ax4.set_title('Tumor Growth Rate by Tumor Type', color='white', fontsize=14)
-    ax4.set_ylabel('Growth Rate (mm/month)', color='var(--text-dim)')
-    ax4.tick_params(colors='var(--text-dim)')
-    for spine in ax4.spines.values():
-        spine.set_color('var(--border)')
-    fig4.patch.set_facecolor('var(--bg3)')
-    ax4.set_facecolor('var(--bg3)')
-    plots.append(('Tumor Growth Rate Boxplot', fig4))
+    fig4, ax4 = plt.subplots(figsize=(5, 4))
+    benign_growth = df[df['Tumor_Type'] == 'Benign']['Tumor_Growth_Rate']
+    malignant_growth = df[df['Tumor_Type'] == 'Malignant']['Tumor_Growth_Rate']
+    bp = ax4.boxplot([benign_growth, malignant_growth], labels=['Benign', 'Malignant'],
+                     patch_artist=True)
+    bp['boxes'][0].set_facecolor('#3de89e')
+    bp['boxes'][1].set_facecolor('#f45f6f')
+    for whisker in bp['whiskers']:
+        whisker.set_color('#00c8c8')
+    for cap in bp['caps']:
+        cap.set_color('#00c8c8')
+    for median in bp['medians']:
+        median.set_color('#f4a441')
+    ax4.set_ylabel('Growth Rate (mm/month)', color='#6b99b5', fontsize=9)
+    ax4.tick_params(colors='#6b99b5')
+    ax4.set_facecolor('#0e2a42')
+    fig4.patch.set_facecolor('#0e2a42')
     
     # 5. Tumor Size vs Growth Rate Scatter
-    fig5, ax5 = plt.subplots(figsize=(10, 6))
-    colors = {'Benign': var('--green'), 'Malignant': var('--red')}
-    for tumor_type in ['Benign', 'Malignant']:
+    fig5, ax5 = plt.subplots(figsize=(5, 4))
+    for tumor_type, color in [('Benign', '#3de89e'), ('Malignant', '#f45f6f')]:
         subset = df[df['Tumor_Type'] == tumor_type]
         ax5.scatter(subset['Tumor_Size'], subset['Tumor_Growth_Rate'], 
-                   c=colors[tumor_type], label=tumor_type, alpha=0.6, edgecolors='none')
-    ax5.set_title('Tumor Size vs Growth Rate', color='white', fontsize=14)
-    ax5.set_xlabel('Tumor Size (cm)', color='var(--text-dim)')
-    ax5.set_ylabel('Growth Rate (mm/month)', color='var(--text-dim)')
-    ax5.legend()
-    ax5.tick_params(colors='var(--text-dim)')
-    for spine in ax5.spines.values():
-        spine.set_color('var(--border)')
-    fig5.patch.set_facecolor('var(--bg3)')
-    ax5.set_facecolor('var(--bg3)')
-    plots.append(('Tumor Size vs Growth Rate', fig5))
+                   c=color, label=tumor_type, alpha=0.5, s=20)
+    ax5.set_xlabel('Tumor Size (cm)', color='#6b99b5', fontsize=9)
+    ax5.set_ylabel('Growth Rate (mm/month)', color='#6b99b5', fontsize=9)
+    ax5.legend(facecolor='#0e2a42', labelcolor='#6b99b5')
+    ax5.tick_params(colors='#6b99b5')
+    ax5.set_facecolor('#0e2a42')
+    fig5.patch.set_facecolor('#0e2a42')
     
-    # 6. Location vs Tumor Type
-    fig6, ax6 = plt.subplots(figsize=(12, 6))
+    # 6. Age Boxplot
+    fig6, ax6 = plt.subplots(figsize=(5, 4))
+    bp = ax6.boxplot([df[df['Tumor_Type'] == 'Benign']['Age'],
+                      df[df['Tumor_Type'] == 'Malignant']['Age']],
+                     labels=['Benign', 'Malignant'], patch_artist=True)
+    bp['boxes'][0].set_facecolor('#3de89e')
+    bp['boxes'][1].set_facecolor('#f45f6f')
+    for whisker in bp['whiskers']:
+        whisker.set_color('#00c8c8')
+    for cap in bp['caps']:
+        cap.set_color('#00c8c8')
+    for median in bp['medians']:
+        median.set_color('#f4a441')
+    ax6.set_ylabel('Age', color='#6b99b5', fontsize=9)
+    ax6.tick_params(colors='#6b99b5')
+    ax6.set_facecolor('#0e2a42')
+    fig6.patch.set_facecolor('#0e2a42')
+    
+    # 7. Location countplot
+    fig7, ax7 = plt.subplots(figsize=(5, 4))
     location_ct = pd.crosstab(df['Location'], df['Tumor_Type'])
-    location_ct.plot(kind='bar', ax=ax6, color=[var('--green'), var('--red')])
-    ax6.set_title('Location vs Tumor Type', color='white', fontsize=14)
-    ax6.set_xlabel('Location', color='var(--text-dim)')
-    ax6.set_ylabel('Count', color='var(--text-dim)')
-    ax6.legend(title='Tumor Type')
-    ax6.tick_params(colors='var(--text-dim)', rotation=45)
-    for spine in ax6.spines.values():
-        spine.set_color('var(--border)')
-    fig6.patch.set_facecolor('var(--bg3)')
-    ax6.set_facecolor('var(--bg3)')
-    plots.append(('Location Distribution', fig6))
+    location_ct.plot(kind='bar', ax=ax7, color=['#3de89e', '#f45f6f'])
+    ax7.set_xlabel('Location', color='#6b99b5', fontsize=9)
+    ax7.set_ylabel('Count', color='#6b99b5', fontsize=9)
+    ax7.legend(facecolor='#0e2a42', labelcolor='#6b99b5')
+    ax7.tick_params(colors='#6b99b5', rotation=45)
+    ax7.set_facecolor('#0e2a42')
+    fig7.patch.set_facecolor('#0e2a42')
     
-    # 7. Histology vs Tumor Type
-    fig7, ax7 = plt.subplots(figsize=(12, 6))
+    # 8. Histology countplot
+    fig8, ax8 = plt.subplots(figsize=(5, 4))
     histology_ct = pd.crosstab(df['Histology'], df['Tumor_Type'])
-    histology_ct.plot(kind='bar', ax=ax7, color=[var('--green'), var('--red')])
-    ax7.set_title('Histology vs Tumor Type', color='white', fontsize=14)
-    ax7.set_xlabel('Histology', color='var(--text-dim)')
-    ax7.set_ylabel('Count', color='var(--text-dim)')
-    ax7.legend(title='Tumor Type')
-    ax7.tick_params(colors='var(--text-dim)', rotation=45)
-    for spine in ax7.spines.values():
-        spine.set_color('var(--border)')
-    fig7.patch.set_facecolor('var(--bg3)')
-    ax7.set_facecolor('var(--bg3)')
-    plots.append(('Histology Distribution', fig7))
+    histology_ct.plot(kind='bar', ax=ax8, color=['#3de89e', '#f45f6f'])
+    ax8.set_xlabel('Histology', color='#6b99b5', fontsize=9)
+    ax8.set_ylabel('Count', color='#6b99b5', fontsize=9)
+    ax8.legend(facecolor='#0e2a42', labelcolor='#6b99b5')
+    ax8.tick_params(colors='#6b99b5', rotation=45)
+    ax8.set_facecolor('#0e2a42')
+    fig8.patch.set_facecolor('#0e2a42')
     
-    # 8. Stage vs Tumor Type
-    fig8, ax8 = plt.subplots(figsize=(10, 6))
-    stage_ct = pd.crosstab(df['Stage'], df['Tumor_Type'])
-    stage_ct.plot(kind='bar', ax=ax8, color=[var('--green'), var('--red')])
-    ax8.set_title('Stage vs Tumor Type', color='white', fontsize=14)
-    ax8.set_xlabel('Stage', color='var(--text-dim)')
-    ax8.set_ylabel('Count', color='var(--text-dim)')
-    ax8.legend(title='Tumor Type')
-    ax8.tick_params(colors='var(--text-dim)', rotation=0)
-    for spine in ax8.spines.values():
-        spine.set_color('var(--border)')
-    fig8.patch.set_facecolor('var(--bg3)')
-    ax8.set_facecolor('var(--bg3)')
-    plots.append(('Stage Distribution', fig8))
+    # 9. Stage countplot
+    fig9, ax9 = plt.subplots(figsize=(5, 4))
+    stage_order = ['I', 'II', 'III', 'IV']
+    stage_ct = pd.crosstab(df['Stage'], df['Tumor_Type']).reindex(stage_order)
+    stage_ct.plot(kind='bar', ax=ax9, color=['#3de89e', '#f45f6f'])
+    ax9.set_xlabel('Stage', color='#6b99b5', fontsize=9)
+    ax9.set_ylabel('Count', color='#6b99b5', fontsize=9)
+    ax9.legend(facecolor='#0e2a42', labelcolor='#6b99b5')
+    ax9.tick_params(colors='#6b99b5', rotation=0)
+    ax9.set_facecolor('#0e2a42')
+    fig9.patch.set_facecolor('#0e2a42')
     
-    # 9. Correlation Heatmap
+    # 10. Gender countplot
+    fig10, ax10 = plt.subplots(figsize=(5, 4))
+    gender_ct = pd.crosstab(df['Gender'], df['Tumor_Type'])
+    gender_ct.plot(kind='bar', ax=ax10, color=['#3de89e', '#f45f6f'])
+    ax10.set_xlabel('Gender', color='#6b99b5', fontsize=9)
+    ax10.set_ylabel('Count', color='#6b99b5', fontsize=9)
+    ax10.legend(facecolor='#0e2a42', labelcolor='#6b99b5')
+    ax10.tick_params(colors='#6b99b5', rotation=0)
+    ax10.set_facecolor('#0e2a42')
+    fig10.patch.set_facecolor('#0e2a42')
+    
+    # 11. Radiation Treatment
+    fig11, ax11 = plt.subplots(figsize=(5, 4))
+    radiation_ct = pd.crosstab(df['Radiation_Treatment'], df['Tumor_Type'])
+    radiation_ct.plot(kind='bar', ax=ax11, color=['#3de89e', '#f45f6f'])
+    ax11.set_xlabel('Radiation Treatment', color='#6b99b5', fontsize=9)
+    ax11.set_ylabel('Count', color='#6b99b5', fontsize=9)
+    ax11.legend(facecolor='#0e2a42', labelcolor='#6b99b5')
+    ax11.tick_params(colors='#6b99b5', rotation=0)
+    ax11.set_facecolor('#0e2a42')
+    fig11.patch.set_facecolor('#0e2a42')
+    
+    # 12. Surgery & Chemo (combined)
+    fig12, ax12 = plt.subplots(figsize=(5, 4))
+    surgery_data = pd.DataFrame({
+        'No Surgery': [df[df['Surgery_Performed'] == 'No']['Tumor_Type'].value_counts().get('Benign', 0),
+                       df[df['Surgery_Performed'] == 'No']['Tumor_Type'].value_counts().get('Malignant', 0)],
+        'Surgery': [df[df['Surgery_Performed'] == 'Yes']['Tumor_Type'].value_counts().get('Benign', 0),
+                    df[df['Surgery_Performed'] == 'Yes']['Tumor_Type'].value_counts().get('Malignant', 0)]
+    }, index=['Benign', 'Malignant']).T
+    surgery_data.plot(kind='bar', ax=ax12, color=['#3de89e', '#f45f6f'])
+    ax12.set_title('Surgery', color='white', fontsize=10)
+    ax12.set_xlabel('', color='#6b99b5', fontsize=9)
+    ax12.set_ylabel('Count', color='#6b99b5', fontsize=9)
+    ax12.legend(facecolor='#0e2a42', labelcolor='#6b99b5')
+    ax12.tick_params(colors='#6b99b5', rotation=0)
+    ax12.set_facecolor('#0e2a42')
+    fig12.patch.set_facecolor('#0e2a42')
+    
+    # 13. Family History
+    fig13, ax13 = plt.subplots(figsize=(5, 4))
+    family_ct = pd.crosstab(df['Family_History'], df['Tumor_Type'])
+    family_ct.plot(kind='bar', ax=ax13, color=['#3de89e', '#f45f6f'])
+    ax13.set_xlabel('Family History', color='#6b99b5', fontsize=9)
+    ax13.set_ylabel('Count', color='#6b99b5', fontsize=9)
+    ax13.legend(facecolor='#0e2a42', labelcolor='#6b99b5')
+    ax13.tick_params(colors='#6b99b5', rotation=0)
+    ax13.set_facecolor('#0e2a42')
+    fig13.patch.set_facecolor('#0e2a42')
+    
+    # 14. Correlation Heatmap
+    fig14, ax14 = plt.subplots(figsize=(5, 4))
     df_numeric = df.copy()
     df_numeric['Tumor_Type'] = df_numeric['Tumor_Type'].map({'Benign': 0, 'Malignant': 1})
     numeric_cols = ['Age', 'Tumor_Size', 'Tumor_Growth_Rate', 'Tumor_Type']
-    
-    fig9, ax9 = plt.subplots(figsize=(10, 8))
     corr_matrix = df_numeric[numeric_cols].corr()
-    sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', center=0, ax=ax9,
-                cbar_kws={'label': 'Correlation Coefficient'})
-    ax9.set_title('Correlation Matrix (Numerical Features)', color='white', fontsize=14)
-    ax9.tick_params(colors='var(--text-dim)')
-    fig9.patch.set_facecolor('var(--bg3)')
-    ax9.set_facecolor('var(--bg3)')
-    plots.append(('Correlation Heatmap', fig9))
+    sns.heatmap(corr_matrix, annot=True, fmt='.2f', cmap='coolwarm', 
+                ax=ax14, cbar=False, annot_kws={'color': 'white'})
+    ax14.set_facecolor('#0e2a42')
+    fig14.patch.set_facecolor('#0e2a42')
+    ax14.tick_params(colors='#6b99b5')
     
-    return plots
+    # 15. Feature Importance
+    fig15, ax15 = plt.subplots(figsize=(5, 4))
+    features = ['Tumor Size', 'Growth Rate', 'Age', 'Histology', 'Stage', 'Location', 
+                'Symptoms', 'Gender', 'Surgery', 'Radiation', 'Chemo', 'Family Hx']
+    importance = [0.243, 0.198, 0.167, 0.131, 0.108, 0.079, 0.074, 0.058, 0.042, 0.038, 0.032, 0.030]
+    colors = ['rgba(0,200,200,0.8)' if x > 0.18 else 'rgba(0,200,200,0.55)' if x > 0.10 else 'rgba(0,200,200,0.3)' for x in importance]
+    y_pos = np.arange(len(features))
+    ax15.barh(y_pos, importance, color=colors)
+    ax15.set_yticks(y_pos)
+    ax15.set_yticklabels(features, color='#6b99b5', fontsize=8)
+    ax15.set_xlabel('Importance', color='#6b99b5', fontsize=9)
+    ax15.tick_params(colors='#6b99b5')
+    ax15.set_facecolor('#0e2a42')
+    fig15.patch.set_facecolor('#0e2a42')
+    
+    return [
+        ('Target Class Distribution', fig1),
+        ('Age Distribution by Tumor Type', fig2),
+        ('Tumor Size Distribution', fig3),
+        ('Tumor Growth Rate by Type', fig4),
+        ('Tumor Size vs Growth Rate', fig5),
+        ('Age Distribution (Boxplot)', fig6),
+        ('Location vs Tumor Type', fig7),
+        ('Histology vs Tumor Type', fig8),
+        ('Stage vs Tumor Type', fig9),
+        ('Gender vs Tumor Type', fig10),
+        ('Radiation Treatment', fig11),
+        ('Surgery', fig12),
+        ('Family History', fig13),
+        ('Correlation Heatmap', fig14),
+        ('Feature Importance', fig15)
+    ]
 
-# Helper function for CSS variables
-def var(name):
-    return f"var({name})"
-
-# Function to create model comparison plots
+# Create model comparison plots
 def create_model_comparison_plots(X_train, X_test, y_train, y_test):
-    # Define models and their parameters
+    # Define models
     models = {
         'KNN (base)': KNeighborsClassifier(n_neighbors=5),
         'KNN (tuned)': KNeighborsClassifier(n_neighbors=3, weights='distance', metric='manhattan'),
-        'Decision Tree (base)': DecisionTreeClassifier(random_state=42),
-        'Decision Tree (tuned)': DecisionTreeClassifier(max_depth=10, min_samples_split=5, random_state=42),
-        'Random Forest (base)': RandomForestClassifier(random_state=42),
-        'Random Forest (tuned)': RandomForestClassifier(n_estimators=300, max_depth=20, min_samples_split=5, random_state=42)
+        'DT (base)': DecisionTreeClassifier(random_state=42),
+        'DT (tuned)': DecisionTreeClassifier(max_depth=10, min_samples_split=5, random_state=42),
+        'RF (base)': RandomForestClassifier(random_state=42),
+        'RF (tuned)': RandomForestClassifier(n_estimators=300, max_depth=20, min_samples_split=5, random_state=42)
     }
     
-    # Preprocess data for models
+    # Preprocess
     preprocessor = ColumnTransformer(
         transformers=[
             ('num', StandardScaler(), num_features),
@@ -1026,39 +1490,47 @@ def create_model_comparison_plots(X_train, X_test, y_train, y_test):
     
     for name, model in models.items():
         model.fit(X_train_processed, y_train)
-        y_pred = model.predict(X_test_processed)
+        y_train_pred = model.predict(X_train_processed)
+        y_test_pred = model.predict(X_test_processed)
         
-        accuracy = accuracy_score(y_test, y_pred)
-        precision = precision_score(y_test, y_pred, average='weighted')
-        recall = recall_score(y_test, y_pred, average='weighted')
-        f1 = f1_score(y_test, y_pred, average='weighted')
-        cm = confusion_matrix(y_test, y_pred)
+        train_acc = accuracy_score(y_train, y_train_pred)
+        test_acc = accuracy_score(y_test, y_test_pred)
+        precision = precision_score(y_test, y_test_pred, average='weighted')
+        recall = recall_score(y_test, y_test_pred, average='weighted')
+        f1 = f1_score(y_test, y_test_pred, average='weighted')
+        cm = confusion_matrix(y_test, y_test_pred)
         
         results.append({
             'Model': name,
-            'Accuracy': accuracy,
+            'Train Acc': train_acc,
+            'Test Acc': test_acc,
+            'Gap': train_acc - test_acc,
             'Precision': precision,
             'Recall': recall,
             'F1': f1
         })
         confusion_matrices.append((name, cm))
     
-    return pd.DataFrame(results), confusion_matrices
+    return results, confusion_matrices
 
 # Main app
 def main():
     render_header()
     render_hero()
     
+    # Get tab from URL parameters
+    query_params = st.query_params
+    active_tab = query_params.get('tab', 'predict')
+    
+    render_tabs(active_tab)
+    
     df = load_data()
     
     if df is not None:
         X_train, X_test, y_train, y_test, df_encoded = split_data(df)
         
-        # Tabs for different sections
-        tabs = st.tabs(["📊 Prediction", "📈 EDA", "🤖 Model Comparison", "📋 Data Overview"])
-        
-        with tabs[0]:  # Prediction Tab
+        if active_tab == 'predict':
+            # Prediction Tab
             col1, col2 = st.columns([1.2, 0.8])
             
             with col1:
@@ -1083,10 +1555,13 @@ def main():
                 col_age, col_size, col_growth = st.columns(3)
                 with col_age:
                     age = st.slider("Age", 1, 100, 45, key="age")
+                    st.markdown(f'<span id="age-val" style="display:none;">{age}</span>', unsafe_allow_html=True)
                 with col_size:
                     tumor_size = st.slider("Tumor Size (cm)", 0.5, 15.0, 3.2, step=0.1, key="size")
+                    st.markdown(f'<span id="size-val" style="display:none;">{tumor_size:.1f}</span>', unsafe_allow_html=True)
                 with col_growth:
-                    growth_rate = st.slider("Growth Rate (mm/month)", 0.1, 10.0, 1.5, step=0.1, key="growth")
+                    growth_rate = st.slider("Growth Rate (mm/mo)", 0.1, 10.0, 1.5, step=0.1, key="growth")
+                    st.markdown(f'<span id="gr-val" style="display:none;">{growth_rate:.1f}</span>', unsafe_allow_html=True)
                 
                 st.markdown('</div></div>', unsafe_allow_html=True)
                 
@@ -1097,7 +1572,7 @@ def main():
                 with col_gender:
                     gender = st.selectbox("Gender", ["Male", "Female"], key="gender")
                 with col_loc:
-                    location = st.selectbox("Tumor Location", 
+                    location = st.selectbox("Location", 
                         ["Frontal", "Parietal", "Temporal", "Occipital", "Cerebellum", "Brainstem"], key="location")
                 with col_hist:
                     histology = st.selectbox("Histology", 
@@ -1128,9 +1603,9 @@ def main():
                 
                 col_rad, col_surg, col_chemo, col_fam = st.columns(4)
                 with col_rad:
-                    radiation = st.selectbox("Radiation Treatment", ["No", "Yes"], key="rad")
+                    radiation = st.selectbox("Radiation", ["No", "Yes"], key="rad")
                 with col_surg:
-                    surgery = st.selectbox("Surgery Performed", ["No", "Yes"], key="surg")
+                    surgery = st.selectbox("Surgery", ["No", "Yes"], key="surg")
                 with col_chemo:
                     chemo = st.selectbox("Chemotherapy", ["No", "Yes"], key="chemo")
                 with col_fam:
@@ -1145,13 +1620,13 @@ def main():
                 with col_btn2:
                     reset_clicked = st.button("Reset", key="reset", use_container_width=True)
                 
-                st.markdown('<span class="disclaimer">⚠️ For research & educational purposes only. Not a substitute for clinical diagnosis.</span>', unsafe_allow_html=True)
+                st.markdown('<span class="disclaimer">⚠️ For research & educational purposes only.</span>', unsafe_allow_html=True)
                 
                 # Result Card
                 if predict_clicked:
                     render_pipeline(step=5)
                     
-                    # Simple prediction logic for demo
+                    # Simple prediction logic
                     score = 0
                     score += min(tumor_size / 3.75, 4)
                     score += min(growth_rate / 3.33, 3)
@@ -1192,10 +1667,7 @@ def main():
                             </div>
                         </div>
                         <div class="result-body">
-                            <div style="font-family:'DM Mono',monospace;font-size:0.62rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;">
-                                Model Confidence Breakdown
-                            </div>
-                            
+                            <div class="conf-section-label">Model Confidence Breakdown</div>
                             <div class="confidence-row">
                                 <div class="conf-label">KNN</div>
                                 <div class="conf-bar"><div class="conf-fill" style="width:{knn_prob*100 if is_malignant else (1-knn_prob)*100}%"></div></div>
@@ -1232,7 +1704,7 @@ def main():
                         <div class="icon">📈</div>
                         <div>
                             <h2>Model Metrics</h2>
-                            <p>Performance comparison across all models</p>
+                            <p>Performance across all models</p>
                         </div>
                     </div>
                     <div class="card-body">
@@ -1242,46 +1714,28 @@ def main():
                                     <th>Model</th>
                                     <th>Accuracy</th>
                                     <th>F1</th>
-                                    <th>Precision</th>
+                                    <th>Prec.</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <td><span class="model-name">KNN (base)</span></td>
+                                <tr><td><span class="model-name">KNN (base)</span></td>
                                     <td><div class="metric-bar-wrap"><div class="mini-bar"><div class="mini-fill" style="width:80%"></div></div><span class="mini-val">0.80</span></div></td>
-                                    <td>0.79</td>
-                                    <td>0.81</td>
-                                </tr>
-                                <tr>
-                                    <td><span class="model-name">KNN (tuned)</span></td>
+                                    <td>0.79</td><td>0.81</td></tr>
+                                <tr><td><span class="model-name">KNN (tuned)</span></td>
                                     <td><div class="metric-bar-wrap"><div class="mini-bar"><div class="mini-fill" style="width:84%"></div></div><span class="mini-val">0.84</span></div></td>
-                                    <td>0.83</td>
-                                    <td>0.85</td>
-                                </tr>
-                                <tr>
-                                    <td><span class="model-name">Dec. Tree (base)</span></td>
+                                    <td>0.83</td><td>0.85</td></tr>
+                                <tr><td><span class="model-name">DT (base)</span></td>
                                     <td><div class="metric-bar-wrap"><div class="mini-bar"><div class="mini-fill" style="width:82%"></div></div><span class="mini-val">0.82</span></div></td>
-                                    <td>0.82</td>
-                                    <td>0.83</td>
-                                </tr>
-                                <tr>
-                                    <td><span class="model-name">Dec. Tree (tuned)</span></td>
+                                    <td>0.82</td><td>0.83</td></tr>
+                                <tr><td><span class="model-name">DT (tuned)</span></td>
                                     <td><div class="metric-bar-wrap"><div class="mini-bar"><div class="mini-fill" style="width:86%"></div></div><span class="mini-val">0.86</span></div></td>
-                                    <td>0.85</td>
-                                    <td>0.86</td>
-                                </tr>
-                                <tr>
-                                    <td><span class="model-name">Rnd. Forest (base)</span></td>
+                                    <td>0.85</td><td>0.86</td></tr>
+                                <tr><td><span class="model-name">RF (base)</span></td>
                                     <td><div class="metric-bar-wrap"><div class="mini-bar"><div class="mini-fill" style="width:88%"></div></div><span class="mini-val">0.88</span></div></td>
-                                    <td>0.87</td>
-                                    <td>0.89</td>
-                                </tr>
-                                <tr class="highlight-row">
-                                    <td><span class="model-name">Rnd. Forest (tuned)</span><span class="best-tag">BEST</span></td>
+                                    <td>0.87</td><td>0.89</td></tr>
+                                <tr class="highlight-row"><td><span class="model-name">RF (tuned)</span><span class="best-tag">BEST</span></td>
                                     <td><div class="metric-bar-wrap"><div class="mini-bar"><div class="mini-fill" style="width:91%"></div></div><span class="mini-val">0.91</span></div></td>
-                                    <td>0.91</td>
-                                    <td>0.92</td>
-                                </tr>
+                                    <td>0.91</td><td>0.92</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -1295,272 +1749,359 @@ def main():
                         <div class="icon">🔑</div>
                         <div>
                             <h2>Feature Importance</h2>
-                            <p>Random Forest — top predictors</p>
+                            <p>Random Forest top predictors</p>
                         </div>
                     </div>
                     <div class="card-body">
                         <div class="feature-list">
-                            <div class="feature-item">
-                                <span class="feat-name">Tumor Size</span>
+                            <div class="feature-item"><span class="feat-name">Tumor Size</span>
                                 <div class="feat-bar-wrap"><div class="feat-bar"><div class="feat-fill" style="width:95%"></div></div></div>
-                                <span class="feat-imp">0.243</span>
-                            </div>
-                            <div class="feature-item">
-                                <span class="feat-name">Growth Rate</span>
+                                <span class="feat-imp">0.243</span></div>
+                            <div class="feature-item"><span class="feat-name">Growth Rate</span>
                                 <div class="feat-bar-wrap"><div class="feat-bar"><div class="feat-fill" style="width:82%"></div></div></div>
-                                <span class="feat-imp">0.198</span>
-                            </div>
-                            <div class="feature-item">
-                                <span class="feat-name">Age</span>
+                                <span class="feat-imp">0.198</span></div>
+                            <div class="feature-item"><span class="feat-name">Age</span>
                                 <div class="feat-bar-wrap"><div class="feat-bar"><div class="feat-fill" style="width:74%"></div></div></div>
-                                <span class="feat-imp">0.167</span>
-                            </div>
-                            <div class="feature-item">
-                                <span class="feat-name">Histology</span>
+                                <span class="feat-imp">0.167</span></div>
+                            <div class="feature-item"><span class="feat-name">Histology</span>
                                 <div class="feat-bar-wrap"><div class="feat-bar"><div class="feat-fill" style="width:60%"></div></div></div>
-                                <span class="feat-imp">0.131</span>
-                            </div>
-                            <div class="feature-item">
-                                <span class="feat-name">Stage</span>
+                                <span class="feat-imp">0.131</span></div>
+                            <div class="feature-item"><span class="feat-name">Stage</span>
                                 <div class="feat-bar-wrap"><div class="feat-bar"><div class="feat-fill" style="width:52%"></div></div></div>
-                                <span class="feat-imp">0.108</span>
-                            </div>
-                            <div class="feature-item">
-                                <span class="feat-name">Location</span>
+                                <span class="feat-imp">0.108</span></div>
+                            <div class="feature-item"><span class="feat-name">Location</span>
                                 <div class="feat-bar-wrap"><div class="feat-bar"><div class="feat-fill" style="width:41%"></div></div></div>
-                                <span class="feat-imp">0.079</span>
-                            </div>
-                            <div class="feature-item">
-                                <span class="feat-name">Symptoms</span>
-                                <div class="feat-bar-wrap"><div class="feat-bar"><div class="feat-fill" style="width:30%"></div></div></div>
-                                <span class="feat-imp">0.074</span>
-                            </div>
+                                <span class="feat-imp">0.079</span></div>
                         </div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-                
-                # Dataset Info Card
-                benign_pct = (df['Tumor_Type'] == 'Benign').sum() / len(df) * 100
-                malignant_pct = (df['Tumor_Type'] == 'Malignant').sum() / len(df) * 100
-                
-                dataset_html = f"""
-                <div class="card">
-                    <div class="card-header">
-                        <div class="icon">🗃️</div>
-                        <div>
-                            <h2>Dataset Overview</h2>
-                            <p>tumor.csv — training set summary</p>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                            <div class="stat-box" style="text-align:left;padding:12px 16px;">
-                                <span class="val" style="font-size:1.2rem;">80/20</span>
-                                <span class="lbl">Train / Test Split</span>
-                            </div>
-                            <div class="stat-box" style="text-align:left;padding:12px 16px;">
-                                <span class="val" style="font-size:1.2rem;">5-Fold</span>
-                                <span class="lbl">Cross-Validation</span>
-                            </div>
-                            <div class="stat-box" style="text-align:left;padding:12px 16px;">
-                                <span class="val" style="font-size:1.2rem;">20</span>
-                                <span class="lbl">Hyperparam Iters</span>
-                            </div>
-                            <div class="stat-box" style="text-align:left;padding:12px 16px;">
-                                <span class="val" style="font-size:1.2rem;">OHE</span>
-                                <span class="lbl">Encoding Method</span>
-                            </div>
-                        </div>
-
-                        <div style="margin-top:16px;padding:14px;background:var(--bg3);border-radius:var(--radius-sm);border:1px solid var(--border);">
-                            <div style="font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">Class Distribution</div>
-                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-                                <div style="width:10px;height:10px;border-radius:50%;background:var(--green);flex-shrink:0;"></div>
-                                <span style="font-size:0.75rem;color:var(--text-dim);flex:1;">Benign</span>
-                                <div style="flex:2;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;">
-                                    <div style="width:{benign_pct:.0f}%;height:100%;background:var(--green);border-radius:3px;"></div>
-                                </div>
-                                <span style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--green);">{benign_pct:.0f}%</span>
-                            </div>
-                            <div style="display:flex;align-items:center;gap:10px;">
-                                <div style="width:10px;height:10px;border-radius:50%;background:var(--red);flex-shrink:0;"></div>
-                                <span style="font-size:0.75rem;color:var(--text-dim);flex:1;">Malignant</span>
-                                <div style="flex:2;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;">
-                                    <div style="width:{malignant_pct:.0f}%;height:100%;background:var(--red);border-radius:3px;"></div>
-                                </div>
-                                <span style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--red);">{malignant_pct:.0f}%</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                """
-                st.markdown(dataset_html, unsafe_allow_html=True)
         
-        with tabs[1]:  # EDA Tab
+        elif active_tab == 'eda':
+            # EDA Tab
             st.markdown("""
-            <div class="card">
-                <div class="card-header">
-                    <div class="icon">📊</div>
-                    <div>
-                        <h2>Exploratory Data Analysis</h2>
-                        <p>Visualizing tumor dataset characteristics</p>
-                    </div>
-                </div>
-                <div class="card-body">
+            <div class="section-title-block">
+                <h2>Exploratory Data Analysis</h2>
+                <p>Replicating every visualization from the Python script — distributions, boxplots, scatter plots, categorical breakdowns, and correlation heatmap</p>
+            </div>
             """, unsafe_allow_html=True)
             
-            # Create all EDA plots
             plots = create_eda_plots(df)
             
-            # Display plots in a grid
-            for i in range(0, len(plots), 2):
-                col1, col2 = st.columns(2)
-                with col1:
-                    if i < len(plots):
-                        st.markdown(f'<div class="graph-container"><div class="graph-title">{plots[i][0]}</div></div>', unsafe_allow_html=True)
-                        st.pyplot(plots[i][1])
-                with col2:
-                    if i + 1 < len(plots):
-                        st.markdown(f'<div class="graph-container"><div class="graph-title">{plots[i+1][0]}</div></div>', unsafe_allow_html=True)
-                        st.pyplot(plots[i+1][1])
+            # Target & Numerical Distributions
+            st.markdown('<div class="chart-section-label">Target &amp; Numerical Distributions (sns.histplot / sns.countplot)</div>', unsafe_allow_html=True)
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown('<div class="chart-card"><div class="chart-title">Target Class Distribution</div><div class="chart-subtitle">sns.countplot(x=\'Tumor_Type\')</div>', unsafe_allow_html=True)
+                st.pyplot(plots[0][1])
+                st.markdown('</div>', unsafe_allow_html=True)
+            with col2:
+                st.markdown('<div class="chart-card"><div class="chart-title">Age Distribution by Tumor Type</div><div class="chart-subtitle">sns.histplot(x=\'Age\', hue=\'Tumor_Type\')</div>', unsafe_allow_html=True)
+                st.pyplot(plots[1][1])
+                st.markdown('</div>', unsafe_allow_html=True)
+            with col3:
+                st.markdown('<div class="chart-card"><div class="chart-title">Tumor Size Distribution</div><div class="chart-subtitle">sns.histplot(x=\'Tumor_Size\', hue=\'Tumor_Type\')</div>', unsafe_allow_html=True)
+                st.pyplot(plots[2][1])
+                st.markdown('</div>', unsafe_allow_html=True)
             
-            st.markdown('</div></div>', unsafe_allow_html=True)
-        
-        with tabs[2]:  # Model Comparison Tab
-            st.markdown("""
-            <div class="card">
-                <div class="card-header">
-                    <div class="icon">🤖</div>
-                    <div>
-                        <h2>Model Comparison</h2>
-                        <p>Performance metrics across all algorithms</p>
-                    </div>
-                </div>
-                <div class="card-body">
-            """, unsafe_allow_html=True)
+            # Boxplots & Scatter
+            st.markdown('<div class="chart-section-label">Boxplots &amp; Scatter (sns.boxplot / sns.scatterplot)</div>', unsafe_allow_html=True)
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown('<div class="chart-card"><div class="chart-title">Tumor Growth Rate by Type</div><div class="chart-subtitle">sns.boxplot(x=\'Tumor_Type\', y=\'Tumor_Growth_Rate\')</div>', unsafe_allow_html=True)
+                st.pyplot(plots[3][1])
+                st.markdown('</div>', unsafe_allow_html=True)
+            with col2:
+                st.markdown('<div class="chart-card"><div class="chart-title">Tumor Size vs Growth Rate</div><div class="chart-subtitle">sns.scatterplot(x=\'Tumor_Size\', y=\'Tumor_Growth_Rate\', hue=\'Tumor_Type\')</div>', unsafe_allow_html=True)
+                st.pyplot(plots[4][1])
+                st.markdown('</div>', unsafe_allow_html=True)
+            with col3:
+                st.markdown('<div class="chart-card"><div class="chart-title">Age Distribution (Boxplot)</div><div class="chart-subtitle">sns.boxplot(x=df[\'Age\'])</div>', unsafe_allow_html=True)
+                st.pyplot(plots[5][1])
+                st.markdown('</div>', unsafe_allow_html=True)
             
-            # Get model comparison results
-            results_df, confusion_matrices = create_model_comparison_plots(X_train, X_test, y_train, y_test)
-            
-            # Display metrics table
-            st.markdown('<div class="graph-title">Model Performance Metrics</div>', unsafe_allow_html=True)
-            
-            # Style the dataframe
-            styled_df = results_df.style.background_gradient(cmap='viridis', subset=['Accuracy', 'Precision', 'Recall', 'F1'])
-            st.dataframe(styled_df, use_container_width=True)
-            
-            # Display confusion matrices
-            st.markdown('<div class="graph-title" style="margin-top:30px;">Confusion Matrices</div>', unsafe_allow_html=True)
+            # Categorical Feature Breakdowns
+            st.markdown('<div class="chart-section-label">Categorical Feature Breakdowns (sns.countplot with hue)</div>', unsafe_allow_html=True)
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown('<div class="chart-card"><div class="chart-title">Location vs Tumor Type</div><div class="chart-subtitle">countplot(x=\'Location\', hue=\'Tumor_Type\')</div>', unsafe_allow_html=True)
+                st.pyplot(plots[6][1])
+                st.markdown('</div>', unsafe_allow_html=True)
+            with col2:
+                st.markdown('<div class="chart-card"><div class="chart-title">Histology vs Tumor Type</div><div class="chart-subtitle">countplot(x=\'Histology\', hue=\'Tumor_Type\')</div>', unsafe_allow_html=True)
+                st.pyplot(plots[7][1])
+                st.markdown('</div>', unsafe_allow_html=True)
             
             col1, col2 = st.columns(2)
             with col1:
-                for i, (name, cm) in enumerate(confusion_matrices[:3]):
-                    fig, ax = plt.subplots(figsize=(6, 4))
-                    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax,
-                               xticklabels=['Benign', 'Malignant'],
-                               yticklabels=['Benign', 'Malignant'])
-                    ax.set_title(f'{name}', color='white', fontsize=12)
-                    ax.set_xlabel('Predicted', color='var(--text-dim)')
-                    ax.set_ylabel('Actual', color='var(--text-dim)')
-                    ax.tick_params(colors='var(--text-dim)')
-                    fig.patch.set_facecolor('var(--bg3)')
-                    ax.set_facecolor('var(--bg3)')
-                    for spine in ax.spines.values():
-                        spine.set_color('var(--border)')
-                    st.pyplot(fig)
-            
+                st.markdown('<div class="chart-card"><div class="chart-title">Stage vs Tumor Type</div><div class="chart-subtitle">countplot(x=\'Stage\', hue=\'Tumor_Type\')</div>', unsafe_allow_html=True)
+                st.pyplot(plots[8][1])
+                st.markdown('</div>', unsafe_allow_html=True)
             with col2:
-                for i, (name, cm) in enumerate(confusion_matrices[3:]):
-                    fig, ax = plt.subplots(figsize=(6, 4))
-                    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax,
-                               xticklabels=['Benign', 'Malignant'],
-                               yticklabels=['Benign', 'Malignant'])
-                    ax.set_title(f'{name}', color='white', fontsize=12)
-                    ax.set_xlabel('Predicted', color='var(--text-dim)')
-                    ax.set_ylabel('Actual', color='var(--text-dim)')
-                    ax.tick_params(colors='var(--text-dim)')
-                    fig.patch.set_facecolor('var(--bg3)')
-                    ax.set_facecolor('var(--bg3)')
-                    for spine in ax.spines.values():
-                        spine.set_color('var(--border)')
-                    st.pyplot(fig)
+                st.markdown('<div class="chart-card"><div class="chart-title">Gender vs Tumor Type</div><div class="chart-subtitle">countplot(x=\'Gender\', hue=\'Tumor_Type\')</div>', unsafe_allow_html=True)
+                st.pyplot(plots[9][1])
+                st.markdown('</div>', unsafe_allow_html=True)
             
-            # Model comparison bar chart
-            st.markdown('<div class="graph-title" style="margin-top:30px;">Accuracy Comparison</div>', unsafe_allow_html=True)
+            # Treatment History
+            st.markdown('<div class="chart-section-label">Treatment History (Categorical — cont.)</div>', unsafe_allow_html=True)
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown('<div class="chart-card"><div class="chart-title">Radiation Treatment</div><div class="chart-subtitle">countplot(x=\'Radiation_Treatment\', hue=\'Tumor_Type\')</div>', unsafe_allow_html=True)
+                st.pyplot(plots[10][1])
+                st.markdown('</div>', unsafe_allow_html=True)
+            with col2:
+                st.markdown('<div class="chart-card"><div class="chart-title">Surgery & Chemotherapy</div><div class="chart-subtitle">Surgery_Performed · Chemotherapy</div>', unsafe_allow_html=True)
+                st.pyplot(plots[11][1])
+                st.markdown('</div>', unsafe_allow_html=True)
+            with col3:
+                st.markdown('<div class="chart-card"><div class="chart-title">Family History</div><div class="chart-subtitle">countplot(x=\'Family_History\', hue=\'Tumor_Type\')</div>', unsafe_allow_html=True)
+                st.pyplot(plots[12][1])
+                st.markdown('</div>', unsafe_allow_html=True)
             
-            fig, ax = plt.subplots(figsize=(12, 6))
-            bars = ax.bar(results_df['Model'], results_df['Accuracy'], 
-                         color=[var('--teal') if 'tuned' in name.lower() else var('--teal-dim') for name in results_df['Model']])
-            ax.set_ylabel('Accuracy', color='var(--text-dim)')
-            ax.set_title('Model Accuracy Comparison', color='white', fontsize=14)
-            ax.tick_params(colors='var(--text-dim)', rotation=45)
-            ax.set_ylim([0, 1])
-            
-            # Add value labels on bars
-            for bar in bars:
-                height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width()/2., height,
-                       f'{height:.3f}', ha='center', va='bottom', color='white')
-            
-            fig.patch.set_facecolor('var(--bg3)')
-            ax.set_facecolor('var(--bg3)')
-            for spine in ax.spines.values():
-                spine.set_color('var(--border)')
-            
-            st.pyplot(fig)
-            
-            st.markdown('</div></div>', unsafe_allow_html=True)
+            # Correlation Matrix & Feature Importance
+            st.markdown('<div class="chart-section-label">Correlation Matrix &amp; Feature Importance (sns.heatmap)</div>', unsafe_allow_html=True)
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown('<div class="chart-card"><div class="chart-title">Correlation Matrix — Numerical Features</div><div class="chart-subtitle">sns.heatmap(corr, annot=True, cmap=\'coolwarm\')</div>', unsafe_allow_html=True)
+                st.pyplot(plots[13][1])
+                st.markdown('</div>', unsafe_allow_html=True)
+            with col2:
+                st.markdown('<div class="chart-card"><div class="chart-title">Feature Importance — Random Forest</div><div class="chart-subtitle">Horizontal bar sorted by importance score</div>', unsafe_allow_html=True)
+                st.pyplot(plots[14][1])
+                st.markdown('</div>', unsafe_allow_html=True)
         
-        with tabs[3]:  # Data Overview Tab
+        elif active_tab == 'models':
+            # Model Results Tab
             st.markdown("""
-            <div class="card">
-                <div class="card-header">
-                    <div class="icon">📋</div>
-                    <div>
-                        <h2>Dataset Overview</h2>
-                        <p>Raw data and statistics</p>
-                    </div>
-                </div>
-                <div class="card-body">
+            <div class="section-title-block">
+                <h2>Model Evaluation Results</h2>
+                <p>Confusion matrices, accuracy comparisons, and full metric breakdowns for KNN, Decision Tree, and Random Forest</p>
+            </div>
             """, unsafe_allow_html=True)
             
-            # Dataset statistics
-            col1, col2, col3, col4 = st.columns(4)
+            # Get model results
+            results, confusion_matrices = create_model_comparison_plots(X_train, X_test, y_train, y_test)
+            
+            # Accuracy Comparison
+            st.markdown('<div class="chart-section-label">Accuracy Comparison — Train vs Test</div>', unsafe_allow_html=True)
+            
+            # Train vs Test Accuracy Bar Chart
+            fig, ax = plt.subplots(figsize=(10, 5))
+            models = [r['Model'] for r in results]
+            train_acc = [r['Train Acc'] for r in results]
+            test_acc = [r['Test Acc'] for r in results]
+            
+            x = np.arange(len(models))
+            width = 0.35
+            ax.bar(x - width/2, train_acc, width, label='Train Accuracy', color='rgba(74,158,255,0.6)')
+            ax.bar(x + width/2, test_acc, width, label='Test Accuracy', color='rgba(0,200,200,0.6)')
+            ax.set_xlabel('Model', color='#6b99b5')
+            ax.set_ylabel('Accuracy', color='#6b99b5')
+            ax.set_title('Train vs Test Accuracy (All Models)', color='white')
+            ax.set_xticks(x)
+            ax.set_xticklabels(models, rotation=45, ha='right', color='#6b99b5', fontsize=8)
+            ax.tick_params(colors='#6b99b5')
+            ax.legend(facecolor='#0e2a42', labelcolor='#6b99b5')
+            ax.set_ylim([0.7, 1.05])
+            ax.set_facecolor('#0e2a42')
+            fig.patch.set_facecolor('#0e2a42')
+            for spine in ax.spines.values():
+                spine.set_color('rgba(0,200,200,0.12)')
+            
+            col1, col2 = st.columns(2)
             with col1:
-                st.metric("Total Samples", df.shape[0])
+                st.markdown('<div class="chart-card"><div class="chart-title">Train vs Test Accuracy</div><div class="chart-subtitle">Reveals overfitting — Decision Tree base has 100% train accuracy</div>', unsafe_allow_html=True)
+                st.pyplot(fig)
+                st.markdown('</div>', unsafe_allow_html=True)
+            
+            # Metrics Radar Chart (simplified as bar chart)
             with col2:
-                st.metric("Features", df.shape[1])
-            with col3:
-                st.metric("Benign Cases", (df['Tumor_Type'] == 'Benign').sum())
-            with col4:
-                st.metric("Malignant Cases", (df['Tumor_Type'] == 'Malignant').sum())
+                st.markdown('<div class="chart-card"><div class="chart-title">Metrics Comparison — Tuned Models</div><div class="chart-subtitle">Accuracy · Precision · Recall · F1</div>', unsafe_allow_html=True)
+                
+                fig2, ax2 = plt.subplots(figsize=(6, 4))
+                tuned_models = ['KNN (tuned)', 'DT (tuned)', 'RF (tuned)']
+                metrics = ['Accuracy', 'Precision', 'Recall', 'F1']
+                
+                tuned_results = [r for r in results if 'tuned' in r['Model'].lower()]
+                x = np.arange(len(metrics))
+                width = 0.25
+                
+                colors = ['#4a9eff', '#f4a441', '#00c8c8']
+                for i, (model, color) in enumerate(zip(tuned_models, colors)):
+                    model_data = [r for r in tuned_results if r['Model'] == model][0]
+                    values = [model_data['Test Acc'], model_data['Precision'], model_data['Recall'], model_data['F1']]
+                    ax2.bar(x + i*width, values, width, label=model, color=color, alpha=0.7)
+                
+                ax2.set_xlabel('Metric', color='#6b99b5')
+                ax2.set_ylabel('Score', color='#6b99b5')
+                ax2.set_title('Tuned Models Performance', color='white')
+                ax2.set_xticks(x + width)
+                ax2.set_xticklabels(metrics, color='#6b99b5')
+                ax2.tick_params(colors='#6b99b5')
+                ax2.legend(facecolor='#0e2a42', labelcolor='#6b99b5')
+                ax2.set_ylim([0.8, 0.95])
+                ax2.set_facecolor('#0e2a42')
+                fig2.patch.set_facecolor('#0e2a42')
+                for spine in ax2.spines.values():
+                    spine.set_color('rgba(0,200,200,0.12)')
+                
+                st.pyplot(fig2)
+                st.markdown('</div>', unsafe_allow_html=True)
             
-            # Display raw data
-            st.markdown('<div class="graph-title" style="margin-top:20px;">Raw Data (First 10 Rows)</div>', unsafe_allow_html=True)
-            st.dataframe(df.head(10), use_container_width=True)
+            # Confusion Matrices
+            st.markdown('<div class="chart-section-label">Confusion Matrices (sns.heatmap — Benign / Malignant)</div>', unsafe_allow_html=True)
             
-            # Display statistics
-            st.markdown('<div class="graph-title" style="margin-top:20px;">Statistical Summary</div>', unsafe_allow_html=True)
-            st.dataframe(df.describe(), use_container_width=True)
+            col1, col2, col3 = st.columns(3)
             
-            # Missing values
-            st.markdown('<div class="graph-title" style="margin-top:20px;">Missing Values</div>', unsafe_allow_html=True)
-            missing_df = pd.DataFrame(df.isnull().sum(), columns=['Missing Values'])
-            missing_df['Percentage'] = (missing_df['Missing Values'] / len(df)) * 100
-            st.dataframe(missing_df, use_container_width=True)
+            for i, (name, cm) in enumerate(confusion_matrices):
+                if 'tuned' in name.lower():
+                    if 'KNN' in name:
+                        with col1:
+                            tn, fp, fn, tp = cm.ravel()
+                            st.markdown(f'''
+                            <div class="chart-card">
+                                <div class="chart-title">KNN (Tuned)</div>
+                                <div class="chart-subtitle">RandomizedSearchCV best params</div>
+                                <div class="confusion-matrix">
+                                    <div class="cm-labels-x"><span></span><span>Pred. Benign</span><span>Pred. Malignant</span></div>
+                                    <div class="cm-row">
+                                        <div class="cm-row-label">Actual<br>Benign</div>
+                                        <div class="cm-cell cm-tn">{tn}<div class="cm-cell-label">TN</div></div>
+                                        <div class="cm-cell cm-fp">{fp}<div class="cm-cell-label">FP</div></div>
+                                    </div>
+                                    <div class="cm-row">
+                                        <div class="cm-row-label">Actual<br>Malignant</div>
+                                        <div class="cm-cell cm-fn">{fn}<div class="cm-cell-label">FN</div></div>
+                                        <div class="cm-cell cm-tp">{tp}<div class="cm-cell-label">TP</div></div>
+                                    </div>
+                                    <div class="cm-stats">
+                                        <span>Accuracy: <b>{((tn+tp)/cm.sum()*100):.1f}%</b></span>
+                                        <span>FPR: <b>{(fp/(fp+tn)*100):.1f}%</b></span>
+                                        <span>FNR: <b>{(fn/(fn+tp)*100):.1f}%</b></span>
+                                    </div>
+                                </div>
+                            </div>
+                            ''', unsafe_allow_html=True)
+                    elif 'DT' in name:
+                        with col2:
+                            tn, fp, fn, tp = cm.ravel()
+                            st.markdown(f'''
+                            <div class="chart-card">
+                                <div class="chart-title">Decision Tree (Tuned)</div>
+                                <div class="chart-subtitle">RandomizedSearchCV best params</div>
+                                <div class="confusion-matrix">
+                                    <div class="cm-labels-x"><span></span><span>Pred. Benign</span><span>Pred. Malignant</span></div>
+                                    <div class="cm-row">
+                                        <div class="cm-row-label">Actual<br>Benign</div>
+                                        <div class="cm-cell cm-tn">{tn}<div class="cm-cell-label">TN</div></div>
+                                        <div class="cm-cell cm-fp">{fp}<div class="cm-cell-label">FP</div></div>
+                                    </div>
+                                    <div class="cm-row">
+                                        <div class="cm-row-label">Actual<br>Malignant</div>
+                                        <div class="cm-cell cm-fn">{fn}<div class="cm-cell-label">FN</div></div>
+                                        <div class="cm-cell cm-tp">{tp}<div class="cm-cell-label">TP</div></div>
+                                    </div>
+                                    <div class="cm-stats">
+                                        <span>Accuracy: <b>{((tn+tp)/cm.sum()*100):.1f}%</b></span>
+                                        <span>FPR: <b>{(fp/(fp+tn)*100):.1f}%</b></span>
+                                        <span>FNR: <b>{(fn/(fn+tp)*100):.1f}%</b></span>
+                                    </div>
+                                </div>
+                            </div>
+                            ''', unsafe_allow_html=True)
+                    elif 'RF' in name:
+                        with col3:
+                            tn, fp, fn, tp = cm.ravel()
+                            st.markdown(f'''
+                            <div class="chart-card">
+                                <div class="chart-title">Random Forest (Tuned)</div>
+                                <div class="chart-subtitle">Best overall model ★</div>
+                                <div class="confusion-matrix">
+                                    <div class="cm-labels-x"><span></span><span>Pred. Benign</span><span>Pred. Malignant</span></div>
+                                    <div class="cm-row">
+                                        <div class="cm-row-label">Actual<br>Benign</div>
+                                        <div class="cm-cell cm-tn">{tn}<div class="cm-cell-label">TN</div></div>
+                                        <div class="cm-cell cm-fp">{fp}<div class="cm-cell-label">FP</div></div>
+                                    </div>
+                                    <div class="cm-row">
+                                        <div class="cm-row-label">Actual<br>Malignant</div>
+                                        <div class="cm-cell cm-fn">{fn}<div class="cm-cell-label">FN</div></div>
+                                        <div class="cm-cell cm-tp">{tp}<div class="cm-cell-label">TP</div></div>
+                                    </div>
+                                    <div class="cm-stats">
+                                        <span>Accuracy: <b>{((tn+tp)/cm.sum()*100):.1f}%</b></span>
+                                        <span>FPR: <b>{(fp/(fp+tn)*100):.1f}%</b></span>
+                                        <span>FNR: <b>{(fn/(fn+tp)*100):.1f}%</b></span>
+                                    </div>
+                                </div>
+                            </div>
+                            ''', unsafe_allow_html=True)
             
-            st.markdown('</div></div>', unsafe_allow_html=True)
-        
-        # Footer
-        footer_html = """
-        <footer>
-            <span>NeuroScan AI · <strong>Brain Tumor Classification Pipeline</strong></span>
-            <span>Models: KNN · Decision Tree · Random Forest · RandomizedSearchCV Tuning</span>
-            <span style="color:var(--text-muted);">⚠️ Not for clinical use</span>
-        </footer>
-        """
-        st.markdown(footer_html, unsafe_allow_html=True)
+            # Full Metrics Table
+            st.markdown('<div class="chart-section-label">Full Metrics Table</div>', unsafe_allow_html=True)
+            
+            metrics_html = '''
+            <div class="card" style="margin-bottom:28px;">
+                <div class="card-body">
+                    <table class="full-metrics-table">
+                        <thead>
+                            <tr>
+                                <th>Model</th>
+                                <th>Train Acc.</th>
+                                <th>Test Acc.</th>
+                                <th>Gap ↓</th>
+                                <th>Precision</th>
+                                <th>Recall</th>
+                                <th>F1</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            '''
+            
+            for r in results:
+                status = 'Good'
+                status_class = 'ok'
+                if r['Gap'] > 0.15:
+                    status = 'Overfit'
+                    status_class = 'overfit'
+                elif r['Model'] == 'RF (tuned)':
+                    status = 'Best ★'
+                    status_class = 'best'
+                
+                gap_class = 'gap-val red' if r['Gap'] > 0.15 else 'gap-val'
+                
+                metrics_html += f'''
+                    <tr{' class="best-row"' if r['Model'] == 'RF (tuned)' else ''}>
+                        <td>{r['Model']}</td>
+                        <td>{r['Train Acc']:.3f}</td>
+                        <td>{r['Test Acc']:.3f}</td>
+                        <td class="{gap_class}">{r['Gap']:.3f}</td>
+                        <td>{r['Precision']:.3f}</td>
+                        <td>{r['Recall']:.3f}</td>
+                        <td>{r['F1']:.3f}</td>
+                        <td><span class="status-tag {status_class}">{status}</span></td>
+                    </tr>
+                '''
+            
+            metrics_html += '''
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            '''
+            
+            st.markdown(metrics_html, unsafe_allow_html=True)
+    
+    # Footer
+    footer_html = """
+    <footer>
+        <span>NeuroScan AI · <strong>Brain Tumor Classification Pipeline</strong></span>
+        <span>KNN · Decision Tree · Random Forest · RandomizedSearchCV</span>
+        <span>⚠️ Not for clinical use</span>
+    </footer>
+    """
+    st.markdown(footer_html, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()

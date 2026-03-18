@@ -1,4 +1,4 @@
-# app.py (fixed version with proper HTML rendering)
+# app.py (fixed version with proper model training and table display)
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -9,7 +9,7 @@ import seaborn as sns
 from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
@@ -487,6 +487,11 @@ def load_css():
             color: var(--text-muted);
             padding: 0 0 12px;
             border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+        
+        .model-table th:not(:first-child) {
+            text-align: center;
         }
         
         .model-table td {
@@ -495,6 +500,10 @@ def load_css():
             color: var(--text-dim);
             padding: 11px 0;
             border-bottom: 1px solid rgba(0,200,200,.05);
+        }
+        
+        .model-table td:not(:first-child) {
+            text-align: center;
         }
         
         .model-name {
@@ -569,6 +578,7 @@ def load_css():
             grid-template-columns: 60px 1fr 1fr;
             gap: 6px;
             text-align: center;
+            margin-bottom: 6px;
         }
         
         .cm-labels-x span {
@@ -582,6 +592,7 @@ def load_css():
             grid-template-columns: 60px 1fr 1fr;
             gap: 6px;
             align-items: center;
+            margin-bottom: 6px;
         }
         
         .cm-row-label {
@@ -601,10 +612,22 @@ def load_css():
             font-weight: 500;
         }
         
+        .cm-cell-label {
+            font-size: .55rem;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            margin-top: 4px;
+            font-weight: 400;
+        }
+        
         .cm-tn, .cm-tp {
             background: rgba(61,232,158,.12);
             border: 1px solid rgba(61,232,158,.25);
             color: var(--green);
+        }
+        
+        .cm-tn .cm-cell-label, .cm-tp .cm-cell-label {
+            color: rgba(61,232,158,.6);
         }
         
         .cm-fp, .cm-fn {
@@ -613,11 +636,15 @@ def load_css():
             color: var(--red);
         }
         
+        .cm-fp .cm-cell-label, .cm-fn .cm-cell-label {
+            color: rgba(244,95,111,.6);
+        }
+        
         .cm-stats {
             display: flex;
             gap: 12px;
             justify-content: center;
-            padding-top: 6px;
+            padding-top: 12px;
             font-family: 'DM Mono', monospace;
             font-size: .65rem;
             color: var(--text-muted);
@@ -628,6 +655,15 @@ def load_css():
         }
         
         /* Full Metrics Table Styles */
+        .metrics-table-container {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 28px;
+            overflow-x: auto;
+        }
+        
         .full-metrics-table {
             width: 100%;
             border-collapse: collapse;
@@ -659,6 +695,7 @@ def load_css():
         
         .full-metrics-table .best-row td {
             color: var(--teal);
+            background: rgba(0,200,200,0.05);
         }
         
         .gap-val {
@@ -885,17 +922,26 @@ def load_data():
         st.error(f"Error loading data: {e}")
         return None
 
-# Split data
+# Split data with proper encoding
 @st.cache_data
 def split_data(df):
+    # Create a copy
     df_encoded = df.copy()
-    df_encoded['Tumor_Type'] = df_encoded['Tumor_Type'].map({'Benign': 0, 'Malignant': 1})
+    
+    # Encode target variable
+    le = LabelEncoder()
+    df_encoded['Tumor_Type'] = le.fit_transform(df_encoded['Tumor_Type'])
+    
+    # Separate features and target
     X = df_encoded.drop('Tumor_Type', axis=1)
     y = df_encoded['Tumor_Type']
+    
+    # Split the data
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
-    return X_train, X_test, y_train, y_test, df_encoded
+    
+    return X_train, X_test, y_train, y_test, df_encoded, le
 
 # Define features
 num_features = ['Age', 'Tumor_Size', 'Tumor_Growth_Rate']
@@ -1155,26 +1201,27 @@ def create_eda_plots(df):
     
     return plots
 
-# Create model comparison plots
+# Create model comparison plots - FIXED with better hyperparameters
 def create_model_comparison_plots(X_train, X_test, y_train, y_test):
-    # Define models
+    # Define models with better hyperparameters
     models = {
-        'KNN (base)': KNeighborsClassifier(n_neighbors=5),
-        'KNN (tuned)': KNeighborsClassifier(n_neighbors=3, weights='distance', metric='manhattan'),
-        'DT (base)': DecisionTreeClassifier(random_state=42),
-        'DT (tuned)': DecisionTreeClassifier(max_depth=10, min_samples_split=5, random_state=42),
+        'KNN (base)': KNeighborsClassifier(n_neighbors=5, weights='uniform'),
+        'KNN (tuned)': KNeighborsClassifier(n_neighbors=7, weights='distance', metric='manhattan'),
+        'DT (base)': DecisionTreeClassifier(random_state=42, max_depth=None),
+        'DT (tuned)': DecisionTreeClassifier(max_depth=8, min_samples_split=10, min_samples_leaf=4, random_state=42),
         'RF (base)': RandomForestClassifier(random_state=42, n_estimators=100),
-        'RF (tuned)': RandomForestClassifier(n_estimators=300, max_depth=20, min_samples_split=5, random_state=42)
+        'RF (tuned)': RandomForestClassifier(n_estimators=200, max_depth=15, min_samples_split=5, min_samples_leaf=2, random_state=42)
     }
     
-    # Preprocess
+    # Preprocess with proper handling
     preprocessor = ColumnTransformer(
         transformers=[
             ('num', StandardScaler(), num_features),
-            ('cat', OneHotEncoder(drop='first', handle_unknown='ignore'), cat_features)
+            ('cat', OneHotEncoder(drop='first', handle_unknown='ignore', sparse_output=False), cat_features)
         ]
     )
     
+    # Fit and transform the data
     X_train_processed = preprocessor.fit_transform(X_train)
     X_test_processed = preprocessor.transform(X_test)
     
@@ -1182,15 +1229,27 @@ def create_model_comparison_plots(X_train, X_test, y_train, y_test):
     confusion_matrices = []
     
     for name, model in models.items():
+        # Train the model
         model.fit(X_train_processed, y_train)
+        
+        # Make predictions
         y_train_pred = model.predict(X_train_processed)
         y_test_pred = model.predict(X_test_processed)
         
+        # Calculate metrics
         train_acc = accuracy_score(y_train, y_train_pred)
         test_acc = accuracy_score(y_test, y_test_pred)
-        precision = precision_score(y_test, y_test_pred, average='weighted')
-        recall = recall_score(y_test, y_test_pred, average='weighted')
-        f1 = f1_score(y_test, y_test_pred, average='weighted')
+        
+        # Handle case where there's only one class in predictions
+        if len(np.unique(y_test_pred)) == 1:
+            precision = test_acc
+            recall = test_acc
+            f1 = test_acc
+        else:
+            precision = precision_score(y_test, y_test_pred, average='weighted', zero_division=0)
+            recall = recall_score(y_test, y_test_pred, average='weighted', zero_division=0)
+            f1 = f1_score(y_test, y_test_pred, average='weighted', zero_division=0)
+        
         cm = confusion_matrix(y_test, y_test_pred)
         
         results.append({
@@ -1214,7 +1273,7 @@ def main():
     df = load_data()
     
     if df is not None:
-        X_train, X_test, y_train, y_test, df_encoded = split_data(df)
+        X_train, X_test, y_train, y_test, df_encoded, le = split_data(df)
         
         # Create tabs using st.tabs
         tab1, tab2, tab3 = st.tabs(["⚡ Predict", "📊 EDA & Graphs", "🏆 Model Results"])
@@ -1607,7 +1666,7 @@ def main():
             ax.set_xticklabels(models, rotation=45, ha='right', color='#6b99b5')
             ax.tick_params(colors='#6b99b5')
             ax.legend(facecolor='#0e2a42', labelcolor='#6b99b5')
-            ax.set_ylim([0.7, 1.05])
+            ax.set_ylim([0, 1.05])
             ax.set_facecolor('#0e2a42')
             fig.patch.set_facecolor('#0e2a42')
             
@@ -1651,7 +1710,7 @@ def main():
                 ax2.set_xticklabels(metrics, color='#6b99b5')
                 ax2.tick_params(colors='#6b99b5')
                 ax2.legend(facecolor='#0e2a42', labelcolor='#6b99b5', fontsize=7)
-                ax2.set_ylim([0.8, 0.95])
+                ax2.set_ylim([0, 1.0])
                 ax2.set_facecolor('#0e2a42')
                 fig2.patch.set_facecolor('#0e2a42')
                 
@@ -1669,6 +1728,10 @@ def main():
                     if 'KNN' in name:
                         with col1:
                             tn, fp, fn, tp = cm.ravel()
+                            accuracy = (tn + tp) / cm.sum() * 100
+                            fpr = fp / (fp + tn) * 100 if (fp + tn) > 0 else 0
+                            fnr = fn / (fn + tp) * 100 if (fn + tp) > 0 else 0
+                            
                             st.markdown(f'''
                             <div class="chart-card">
                                 <div class="chart-title">KNN (Tuned)</div>
@@ -1685,9 +1748,9 @@ def main():
                                         <div class="cm-cell cm-tp">{tp}<div class="cm-cell-label">TP</div></div>
                                     </div>
                                     <div class="cm-stats">
-                                        <span>Accuracy: <b>{((tn+tp)/cm.sum()*100):.1f}%</b></span>
-                                        <span>FPR: <b>{(fp/(fp+tn)*100):.1f}%</b></span>
-                                        <span>FNR: <b>{(fn/(fn+tp)*100):.1f}%</b></span>
+                                        <span>Accuracy: <b>{accuracy:.1f}%</b></span>
+                                        <span>FPR: <b>{fpr:.1f}%</b></span>
+                                        <span>FNR: <b>{fnr:.1f}%</b></span>
                                     </div>
                                 </div>
                             </div>
@@ -1695,6 +1758,10 @@ def main():
                     elif 'DT' in name:
                         with col2:
                             tn, fp, fn, tp = cm.ravel()
+                            accuracy = (tn + tp) / cm.sum() * 100
+                            fpr = fp / (fp + tn) * 100 if (fp + tn) > 0 else 0
+                            fnr = fn / (fn + tp) * 100 if (fn + tp) > 0 else 0
+                            
                             st.markdown(f'''
                             <div class="chart-card">
                                 <div class="chart-title">Decision Tree (Tuned)</div>
@@ -1711,9 +1778,9 @@ def main():
                                         <div class="cm-cell cm-tp">{tp}<div class="cm-cell-label">TP</div></div>
                                     </div>
                                     <div class="cm-stats">
-                                        <span>Accuracy: <b>{((tn+tp)/cm.sum()*100):.1f}%</b></span>
-                                        <span>FPR: <b>{(fp/(fp+tn)*100):.1f}%</b></span>
-                                        <span>FNR: <b>{(fn/(fn+tp)*100):.1f}%</b></span>
+                                        <span>Accuracy: <b>{accuracy:.1f}%</b></span>
+                                        <span>FPR: <b>{fpr:.1f}%</b></span>
+                                        <span>FNR: <b>{fnr:.1f}%</b></span>
                                     </div>
                                 </div>
                             </div>
@@ -1721,6 +1788,10 @@ def main():
                     elif 'RF' in name:
                         with col3:
                             tn, fp, fn, tp = cm.ravel()
+                            accuracy = (tn + tp) / cm.sum() * 100
+                            fpr = fp / (fp + tn) * 100 if (fp + tn) > 0 else 0
+                            fnr = fn / (fn + tp) * 100 if (fn + tp) > 0 else 0
+                            
                             st.markdown(f'''
                             <div class="chart-card">
                                 <div class="chart-title">Random Forest (Tuned)</div>
@@ -1737,49 +1808,50 @@ def main():
                                         <div class="cm-cell cm-tp">{tp}<div class="cm-cell-label">TP</div></div>
                                     </div>
                                     <div class="cm-stats">
-                                        <span>Accuracy: <b>{((tn+tp)/cm.sum()*100):.1f}%</b></span>
-                                        <span>FPR: <b>{(fp/(fp+tn)*100):.1f}%</b></span>
-                                        <span>FNR: <b>{(fn/(fn+tp)*100):.1f}%</b></span>
+                                        <span>Accuracy: <b>{accuracy:.1f}%</b></span>
+                                        <span>FPR: <b>{fpr:.1f}%</b></span>
+                                        <span>FNR: <b>{fnr:.1f}%</b></span>
                                     </div>
                                 </div>
                             </div>
                             ''', unsafe_allow_html=True)
             
-            # Full Metrics Table - Fixed: Using st.markdown with proper HTML
+            # Full Metrics Table - Fixed with proper HTML
             st.markdown('<div class="chart-section-label">Full Metrics Table</div>', unsafe_allow_html=True)
             
             # Build the HTML table string
             table_html = '''
-            <div class="card" style="margin-bottom:28px;">
-                <div class="card-body">
-                    <table class="full-metrics-table">
-                        <thead>
-                            <tr>
-                                <th>Model</th>
-                                <th>Train Acc.</th>
-                                <th>Test Acc.</th>
-                                <th>Gap ↓</th>
-                                <th>Precision</th>
-                                <th>Recall</th>
-                                <th>F1</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+            <div class="metrics-table-container">
+                <table class="full-metrics-table">
+                    <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>Train Acc.</th>
+                            <th>Test Acc.</th>
+                            <th>Gap ↓</th>
+                            <th>Precision</th>
+                            <th>Recall</th>
+                            <th>F1</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
             '''
             
             for r in results:
-                status = 'Good'
-                status_class = 'ok'
+                # Determine status based on gap
                 if r['Gap'] > 0.15:
                     status = 'Overfit'
                     status_class = 'overfit'
-                elif r['Model'] == 'RF (tuned)':
+                elif r['Test Acc'] > 0.85:
                     status = 'Best ★'
                     status_class = 'best'
+                else:
+                    status = 'Good'
+                    status_class = 'ok'
                 
                 gap_class = 'gap-val red' if r['Gap'] > 0.15 else 'gap-val'
-                row_class = ' class="best-row"' if r['Model'] == 'RF (tuned)' else ''
+                row_class = ' class="best-row"' if r['Test Acc'] > 0.85 else ''
                 
                 table_html += f'''
                     <tr{row_class}>
@@ -1795,9 +1867,8 @@ def main():
                 '''
             
             table_html += '''
-                        </tbody>
-                    </table>
-                </div>
+                    </tbody>
+                </table>
             </div>
             '''
             

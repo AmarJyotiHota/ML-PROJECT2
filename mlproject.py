@@ -2,6 +2,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import train_test_split, RandomizedSearchCV
@@ -12,9 +14,6 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
-import base64
-from pathlib import Path
-import time
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -26,13 +25,12 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS to match the HTML/CSS design
+# Custom CSS (same as before, but I'll keep it concise here)
 def load_css():
     css = """
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Sora:wght@300;400;500;600;700&display=swap');
         
-        /* Variables */
         :root {
             --bg: #04101f;
             --bg2: #071828;
@@ -52,18 +50,14 @@ def load_css():
             --text-muted: #3e6880;
             --radius: 12px;
             --radius-sm: 8px;
-            --shadow: 0 8px 40px rgba(0,0,0,0.55);
-            --shadow-sm: 0 2px 16px rgba(0,0,0,0.35);
         }
         
-        /* Main container */
         .stApp {
             background: var(--bg);
             color: var(--text);
             font-family: 'Sora', sans-serif;
         }
         
-        /* Background mesh */
         .stApp::before {
             content: '';
             position: fixed; inset: 0;
@@ -75,7 +69,6 @@ def load_css():
             z-index: 0;
         }
         
-        /* Grid-dot pattern */
         .stApp::after {
             content: '';
             position: fixed; inset: 0;
@@ -85,7 +78,6 @@ def load_css():
             z-index: 0;
         }
         
-        /* Header */
         .custom-header {
             display: flex;
             align-items: center;
@@ -112,15 +104,12 @@ def load_css():
             background: linear-gradient(135deg, var(--teal) 0%, #006f8e 100%);
             display: grid; place-items: center;
             box-shadow: 0 0 24px rgba(0,200,200,0.3);
-            flex-shrink: 0;
         }
         
         .logo-mark svg {
             width: 22px; height: 22px;
             stroke: white;
             stroke-width: 1.8;
-            stroke-linecap: round;
-            stroke-linejoin: round;
             fill: none;
         }
         
@@ -128,7 +117,6 @@ def load_css():
             font-family: 'Cormorant Garamond', serif;
             font-size: 1.65rem;
             font-weight: 500;
-            letter-spacing: 0.02em;
             color: #ffffff;
             line-height: 1;
         }
@@ -158,7 +146,6 @@ def load_css():
             border: 1px solid var(--border);
             color: var(--text-dim);
             background: var(--teal-dim);
-            transition: border-color 0.2s;
         }
         
         .badge.active {
@@ -167,7 +154,6 @@ def load_css():
             box-shadow: 0 0 12px rgba(0,200,200,0.15);
         }
         
-        /* Hero Strip */
         .hero-strip {
             background: var(--surface);
             border: 1px solid var(--border);
@@ -247,7 +233,6 @@ def load_css():
             display: block;
         }
         
-        /* Cards */
         .card {
             background: var(--surface);
             border: 1px solid var(--border);
@@ -277,7 +262,6 @@ def load_css():
             display: grid; place-items: center;
             color: var(--teal);
             font-size: 0.9rem;
-            flex-shrink: 0;
         }
         
         .card-header h2 {
@@ -299,14 +283,12 @@ def load_css():
             padding: 24px;
         }
         
-        /* Pipeline */
         .pipeline {
             display: flex;
             align-items: center;
             gap: 0;
             padding: 6px 0;
             overflow-x: auto;
-            scrollbar-width: none;
         }
         
         .pipeline::-webkit-scrollbar {
@@ -320,7 +302,6 @@ def load_css():
             gap: 6px;
             flex: 1;
             min-width: 72px;
-            cursor: default;
         }
         
         .pipe-dot {
@@ -332,8 +313,6 @@ def load_css():
             color: var(--text-muted);
             font-size: 0.85rem;
             transition: all 0.3s;
-            position: relative;
-            z-index: 1;
         }
         
         .pipe-step.active .pipe-dot {
@@ -370,7 +349,6 @@ def load_css():
             box-shadow: 0 0 6px rgba(0,200,200,0.3);
         }
         
-        /* Form sections */
         .form-section {
             margin-bottom: 28px;
         }
@@ -400,29 +378,6 @@ def load_css():
             gap: 14px;
         }
         
-        /* Override Streamlit form elements */
-        .stSlider > div > div {
-            background: transparent !important;
-        }
-        
-        .stSlider label {
-            font-family: 'DM Mono', monospace !important;
-            color: var(--text-dim) !important;
-        }
-        
-        .stSelectbox label {
-            font-family: 'DM Mono', monospace !important;
-            color: var(--text-dim) !important;
-        }
-        
-        .stSelectbox > div > div {
-            background: var(--bg3) !important;
-            border: 1px solid var(--border) !important;
-            border-radius: var(--radius-sm) !important;
-            color: var(--text) !important;
-        }
-        
-        /* Result Card */
         .result-card {
             border-radius: var(--radius);
             border: 1px solid var(--border);
@@ -464,7 +419,6 @@ def load_css():
             border-radius: 50%;
             display: grid; place-items: center;
             font-size: 1.4rem;
-            flex-shrink: 0;
         }
         
         .result-card.benign .result-icon {
@@ -516,7 +470,6 @@ def load_css():
             text-transform: uppercase;
             color: var(--text-muted);
             width: 80px;
-            flex-shrink: 0;
         }
         
         .conf-bar {
@@ -548,10 +501,8 @@ def load_css():
             color: var(--text);
             width: 42px;
             text-align: right;
-            flex-shrink: 0;
         }
         
-        /* Model table */
         .model-table {
             width: 100%;
             border-collapse: collapse;
@@ -569,12 +520,20 @@ def load_css():
             font-weight: 400;
         }
         
+        .model-table th:not(:first-child) {
+            text-align: center;
+        }
+        
         .model-table td {
             font-family: 'DM Mono', monospace;
             font-size: 0.78rem;
             color: var(--text-dim);
             padding: 11px 0;
             border-bottom: 1px solid rgba(0,200,200,0.05);
+        }
+        
+        .model-table td:not(:first-child) {
+            text-align: center;
         }
         
         .model-name {
@@ -592,10 +551,8 @@ def load_css():
             border: 1px solid rgba(0,200,200,0.2);
             letter-spacing: 0.06em;
             margin-left: 6px;
-            vertical-align: middle;
         }
         
-        /* Feature importance */
         .feature-list {
             display: flex;
             flex-direction: column;
@@ -645,7 +602,34 @@ def load_css():
             background: linear-gradient(90deg, var(--teal), #00a0a0);
         }
         
-        /* Footer */
+        .metric-bar-wrap {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .mini-bar {
+            flex: 1;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--bg3);
+            overflow: hidden;
+        }
+        
+        .mini-fill {
+            height: 100%;
+            border-radius: 2px;
+            background: linear-gradient(90deg, var(--teal), #007faa);
+        }
+        
+        .mini-val {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            width: 36px;
+        }
+        
         footer {
             border-top: 1px solid var(--border);
             padding: 24px 0 0;
@@ -665,7 +649,6 @@ def load_css():
             color: var(--text-dim);
         }
         
-        /* Animations */
         @keyframes fadeDown {
             from { opacity: 0; transform: translateY(-12px); }
             to { opacity: 1; transform: translateY(0); }
@@ -676,12 +659,10 @@ def load_css():
             to { opacity: 1; transform: translateY(0); }
         }
         
-        /* Hide Streamlit branding */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         .stApp > header {visibility: hidden;}
         
-        /* Custom button */
         .stButton > button {
             background: linear-gradient(135deg, #00b8b8 0%, #007a8a 100%);
             color: white;
@@ -696,6 +677,7 @@ def load_css():
             cursor: pointer;
             transition: all 0.2s;
             box-shadow: 0 4px 22px rgba(0,180,180,0.35);
+            width: 100%;
         }
         
         .stButton > button:hover {
@@ -704,19 +686,40 @@ def load_css():
             filter: brightness(1.08);
         }
         
-        /* Reset button */
-        .stButton.reset > button {
-            background: transparent;
-            border: 1px solid var(--border);
-            color: var(--text-dim);
-            box-shadow: none;
+        .disclaimer {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-top: 12px;
+            display: block;
         }
         
-        .stButton.reset > button:hover {
-            border-color: var(--border-hi);
-            color: var(--text);
-            transform: none;
-            box-shadow: none;
+        .block-container {
+            padding-top: 1rem;
+            padding-bottom: 0rem;
+            max-width: 1280px;
+        }
+        
+        .row-widget.stHorizontal {
+            gap: 28px;
+        }
+        
+        /* Graph container styling */
+        .graph-container {
+            background: var(--bg3);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+        
+        .graph-title {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.7rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--teal);
+            margin-bottom: 12px;
         }
     </style>
     """
@@ -792,7 +795,6 @@ def render_pipeline(step=0):
     pipeline_html = '<div class="card" style="margin-bottom:22px;"><div class="card-body" style="padding:18px 24px;"><div class="pipeline">'
     
     for i in range(len(steps)):
-        # Step
         active_class = " active" if i <= step else ""
         pipeline_html += f'''
             <div class="pipe-step{active_class}" data-step="{i}">
@@ -800,7 +802,6 @@ def render_pipeline(step=0):
                 <div class="pipe-label">{labels[i].replace(" ", "<br>")}</div>
             </div>
         '''
-        # Connector (except after last step)
         if i < len(steps) - 1:
             conn_class = " active" if i < step else ""
             pipeline_html += f'<div class="pipe-connector{conn_class}"></div>'
@@ -811,20 +812,25 @@ def render_pipeline(step=0):
 # Load data
 @st.cache_data
 def load_data():
-    df = pd.read_csv('tumor.csv')
-    df = df.drop(['Patient_ID', 'Survival_Rate', 'Follow_Up_Required', 'MRI_Result'], axis=1)
-    df['Tumor_Type'] = df['Tumor_Type'].map({'Benign': 0, 'Malignant': 1})
-    return df
+    try:
+        df = pd.read_csv('tumor.csv')
+        df = df.drop(['Patient_ID', 'Survival_Rate', 'Follow_Up_Required', 'MRI_Result'], axis=1)
+        return df
+    except Exception as e:
+        st.error(f"Error loading data: {e}")
+        return None
 
 # Split data
 @st.cache_data
 def split_data(df):
-    X = df.drop('Tumor_Type', axis=1)
-    y = df['Tumor_Type']
+    df_encoded = df.copy()
+    df_encoded['Tumor_Type'] = df_encoded['Tumor_Type'].map({'Benign': 0, 'Malignant': 1})
+    X = df_encoded.drop('Tumor_Type', axis=1)
+    y = df_encoded['Tumor_Type']
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
-    return X_train, X_test, y_train, y_test
+    return X_train, X_test, y_train, y_test, df_encoded
 
 # Define features
 num_features = ['Age', 'Tumor_Size', 'Tumor_Growth_Rate']
@@ -835,354 +841,716 @@ cat_features = [
     'Chemotherapy', 'Family_History'
 ]
 
+# Function to create EDA plots
+def create_eda_plots(df):
+    plots = []
+    
+    # 1. Target Class Distribution
+    fig1, ax1 = plt.subplots(figsize=(10, 5))
+    df['Tumor_Type'].value_counts().plot(kind='bar', color=[var('--green'), var('--red')], ax=ax1)
+    ax1.set_title('Target Class Distribution', color='white', fontsize=14)
+    ax1.set_xlabel('Tumor Type', color='var(--text-dim)')
+    ax1.set_ylabel('Count', color='var(--text-dim)')
+    ax1.tick_params(colors='var(--text-dim)')
+    ax1.set_xticklabels(['Benign', 'Malignant'], rotation=0)
+    for spine in ax1.spines.values():
+        spine.set_color('var(--border)')
+    fig1.patch.set_facecolor('var(--bg3)')
+    ax1.set_facecolor('var(--bg3)')
+    plots.append(('Target Class Distribution', fig1))
+    
+    # 2. Age Distribution by Tumor Type
+    fig2, ax2 = plt.subplots(figsize=(10, 5))
+    for tumor_type in ['Benign', 'Malignant']:
+        subset = df[df['Tumor_Type'] == tumor_type]
+        ax2.hist(subset['Age'], alpha=0.7, label=tumor_type, bins=20, 
+                color=var('--green') if tumor_type == 'Benign' else var('--red'))
+    ax2.set_title('Age Distribution by Tumor Type', color='white', fontsize=14)
+    ax2.set_xlabel('Age', color='var(--text-dim)')
+    ax2.set_ylabel('Frequency', color='var(--text-dim)')
+    ax2.legend()
+    ax2.tick_params(colors='var(--text-dim)')
+    for spine in ax2.spines.values():
+        spine.set_color('var(--border)')
+    fig2.patch.set_facecolor('var(--bg3)')
+    ax2.set_facecolor('var(--bg3)')
+    plots.append(('Age Distribution by Tumor Type', fig2))
+    
+    # 3. Tumor Size Distribution
+    fig3, ax3 = plt.subplots(figsize=(10, 5))
+    for tumor_type in ['Benign', 'Malignant']:
+        subset = df[df['Tumor_Type'] == tumor_type]
+        ax3.hist(subset['Tumor_Size'], alpha=0.7, label=tumor_type, bins=20,
+                color=var('--green') if tumor_type == 'Benign' else var('--red'))
+    ax3.set_title('Tumor Size Distribution by Tumor Type', color='white', fontsize=14)
+    ax3.set_xlabel('Tumor Size (cm)', color='var(--text-dim)')
+    ax3.set_ylabel('Frequency', color='var(--text-dim)')
+    ax3.legend()
+    ax3.tick_params(colors='var(--text-dim)')
+    for spine in ax3.spines.values():
+        spine.set_color('var(--border)')
+    fig3.patch.set_facecolor('var(--bg3)')
+    ax3.set_facecolor('var(--bg3)')
+    plots.append(('Tumor Size Distribution', fig3))
+    
+    # 4. Tumor Growth Rate Boxplot
+    fig4, ax4 = plt.subplots(figsize=(10, 6))
+    benign_data = [df[df['Tumor_Type'] == 'Benign']['Tumor_Growth_Rate']]
+    malignant_data = [df[df['Tumor_Type'] == 'Malignant']['Tumor_Growth_Rate']]
+    bp = ax4.boxplot([benign_data[0], malignant_data[0]], labels=['Benign', 'Malignant'],
+                     patch_artist=True,
+                     boxprops=dict(color='var(--teal)'),
+                     whiskerprops=dict(color='var(--teal)'),
+                     capprops=dict(color='var(--teal)'),
+                     medianprops=dict(color='var(--amber)', linewidth=2))
+    bp['boxes'][0].set_facecolor(var('--green'))
+    bp['boxes'][1].set_facecolor(var('--red'))
+    ax4.set_title('Tumor Growth Rate by Tumor Type', color='white', fontsize=14)
+    ax4.set_ylabel('Growth Rate (mm/month)', color='var(--text-dim)')
+    ax4.tick_params(colors='var(--text-dim)')
+    for spine in ax4.spines.values():
+        spine.set_color('var(--border)')
+    fig4.patch.set_facecolor('var(--bg3)')
+    ax4.set_facecolor('var(--bg3)')
+    plots.append(('Tumor Growth Rate Boxplot', fig4))
+    
+    # 5. Tumor Size vs Growth Rate Scatter
+    fig5, ax5 = plt.subplots(figsize=(10, 6))
+    colors = {'Benign': var('--green'), 'Malignant': var('--red')}
+    for tumor_type in ['Benign', 'Malignant']:
+        subset = df[df['Tumor_Type'] == tumor_type]
+        ax5.scatter(subset['Tumor_Size'], subset['Tumor_Growth_Rate'], 
+                   c=colors[tumor_type], label=tumor_type, alpha=0.6, edgecolors='none')
+    ax5.set_title('Tumor Size vs Growth Rate', color='white', fontsize=14)
+    ax5.set_xlabel('Tumor Size (cm)', color='var(--text-dim)')
+    ax5.set_ylabel('Growth Rate (mm/month)', color='var(--text-dim)')
+    ax5.legend()
+    ax5.tick_params(colors='var(--text-dim)')
+    for spine in ax5.spines.values():
+        spine.set_color('var(--border)')
+    fig5.patch.set_facecolor('var(--bg3)')
+    ax5.set_facecolor('var(--bg3)')
+    plots.append(('Tumor Size vs Growth Rate', fig5))
+    
+    # 6. Location vs Tumor Type
+    fig6, ax6 = plt.subplots(figsize=(12, 6))
+    location_ct = pd.crosstab(df['Location'], df['Tumor_Type'])
+    location_ct.plot(kind='bar', ax=ax6, color=[var('--green'), var('--red')])
+    ax6.set_title('Location vs Tumor Type', color='white', fontsize=14)
+    ax6.set_xlabel('Location', color='var(--text-dim)')
+    ax6.set_ylabel('Count', color='var(--text-dim)')
+    ax6.legend(title='Tumor Type')
+    ax6.tick_params(colors='var(--text-dim)', rotation=45)
+    for spine in ax6.spines.values():
+        spine.set_color('var(--border)')
+    fig6.patch.set_facecolor('var(--bg3)')
+    ax6.set_facecolor('var(--bg3)')
+    plots.append(('Location Distribution', fig6))
+    
+    # 7. Histology vs Tumor Type
+    fig7, ax7 = plt.subplots(figsize=(12, 6))
+    histology_ct = pd.crosstab(df['Histology'], df['Tumor_Type'])
+    histology_ct.plot(kind='bar', ax=ax7, color=[var('--green'), var('--red')])
+    ax7.set_title('Histology vs Tumor Type', color='white', fontsize=14)
+    ax7.set_xlabel('Histology', color='var(--text-dim)')
+    ax7.set_ylabel('Count', color='var(--text-dim)')
+    ax7.legend(title='Tumor Type')
+    ax7.tick_params(colors='var(--text-dim)', rotation=45)
+    for spine in ax7.spines.values():
+        spine.set_color('var(--border)')
+    fig7.patch.set_facecolor('var(--bg3)')
+    ax7.set_facecolor('var(--bg3)')
+    plots.append(('Histology Distribution', fig7))
+    
+    # 8. Stage vs Tumor Type
+    fig8, ax8 = plt.subplots(figsize=(10, 6))
+    stage_ct = pd.crosstab(df['Stage'], df['Tumor_Type'])
+    stage_ct.plot(kind='bar', ax=ax8, color=[var('--green'), var('--red')])
+    ax8.set_title('Stage vs Tumor Type', color='white', fontsize=14)
+    ax8.set_xlabel('Stage', color='var(--text-dim)')
+    ax8.set_ylabel('Count', color='var(--text-dim)')
+    ax8.legend(title='Tumor Type')
+    ax8.tick_params(colors='var(--text-dim)', rotation=0)
+    for spine in ax8.spines.values():
+        spine.set_color('var(--border)')
+    fig8.patch.set_facecolor('var(--bg3)')
+    ax8.set_facecolor('var(--bg3)')
+    plots.append(('Stage Distribution', fig8))
+    
+    # 9. Correlation Heatmap
+    df_numeric = df.copy()
+    df_numeric['Tumor_Type'] = df_numeric['Tumor_Type'].map({'Benign': 0, 'Malignant': 1})
+    numeric_cols = ['Age', 'Tumor_Size', 'Tumor_Growth_Rate', 'Tumor_Type']
+    
+    fig9, ax9 = plt.subplots(figsize=(10, 8))
+    corr_matrix = df_numeric[numeric_cols].corr()
+    sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', center=0, ax=ax9,
+                cbar_kws={'label': 'Correlation Coefficient'})
+    ax9.set_title('Correlation Matrix (Numerical Features)', color='white', fontsize=14)
+    ax9.tick_params(colors='var(--text-dim)')
+    fig9.patch.set_facecolor('var(--bg3)')
+    ax9.set_facecolor('var(--bg3)')
+    plots.append(('Correlation Heatmap', fig9))
+    
+    return plots
+
+# Helper function for CSS variables
+def var(name):
+    return f"var({name})"
+
+# Function to create model comparison plots
+def create_model_comparison_plots(X_train, X_test, y_train, y_test):
+    # Define models and their parameters
+    models = {
+        'KNN (base)': KNeighborsClassifier(n_neighbors=5),
+        'KNN (tuned)': KNeighborsClassifier(n_neighbors=3, weights='distance', metric='manhattan'),
+        'Decision Tree (base)': DecisionTreeClassifier(random_state=42),
+        'Decision Tree (tuned)': DecisionTreeClassifier(max_depth=10, min_samples_split=5, random_state=42),
+        'Random Forest (base)': RandomForestClassifier(random_state=42),
+        'Random Forest (tuned)': RandomForestClassifier(n_estimators=300, max_depth=20, min_samples_split=5, random_state=42)
+    }
+    
+    # Preprocess data for models
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('num', StandardScaler(), num_features),
+            ('cat', OneHotEncoder(drop='first', handle_unknown='ignore'), cat_features)
+        ]
+    )
+    
+    X_train_processed = preprocessor.fit_transform(X_train)
+    X_test_processed = preprocessor.transform(X_test)
+    
+    results = []
+    confusion_matrices = []
+    
+    for name, model in models.items():
+        model.fit(X_train_processed, y_train)
+        y_pred = model.predict(X_test_processed)
+        
+        accuracy = accuracy_score(y_test, y_pred)
+        precision = precision_score(y_test, y_pred, average='weighted')
+        recall = recall_score(y_test, y_pred, average='weighted')
+        f1 = f1_score(y_test, y_pred, average='weighted')
+        cm = confusion_matrix(y_test, y_pred)
+        
+        results.append({
+            'Model': name,
+            'Accuracy': accuracy,
+            'Precision': precision,
+            'Recall': recall,
+            'F1': f1
+        })
+        confusion_matrices.append((name, cm))
+    
+    return pd.DataFrame(results), confusion_matrices
+
 # Main app
 def main():
     render_header()
     render_hero()
     
-    try:
-        df = load_data()
-        X_train, X_test, y_train, y_test = split_data(df)
+    df = load_data()
+    
+    if df is not None:
+        X_train, X_test, y_train, y_test, df_encoded = split_data(df)
         
-        # Create two columns
-        col1, col2 = st.columns([1.2, 0.8])
+        # Tabs for different sections
+        tabs = st.tabs(["📊 Prediction", "📈 EDA", "🤖 Model Comparison", "📋 Data Overview"])
         
-        with col1:
-            render_pipeline(step=0)
+        with tabs[0]:  # Prediction Tab
+            col1, col2 = st.columns([1.2, 0.8])
             
-            # Patient Input Form Card
-            st.markdown("""
-            <div class="card">
-                <div class="card-header">
-                    <div class="icon">👤</div>
-                    <div>
-                        <h2>Patient Data Input</h2>
-                        <p>Fill in all fields for highest accuracy prediction</p>
-                    </div>
-                </div>
-                <div class="card-body">
-            """, unsafe_allow_html=True)
-            
-            # Numerical Features
-            st.markdown('<div class="form-section"><div class="section-label">Numerical Features</div><div class="fields-grid">', unsafe_allow_html=True)
-            
-            col_age, col_size, col_growth = st.columns(3)
-            with col_age:
-                age = st.slider("Age", 1, 100, 45, key="age")
-            with col_size:
-                tumor_size = st.slider("Tumor Size (cm)", 0.5, 15.0, 3.2, step=0.1, key="size")
-            with col_growth:
-                growth_rate = st.slider("Growth Rate (mm/month)", 0.1, 10.0, 1.5, step=0.1, key="growth")
-            
-            st.markdown('</div></div>', unsafe_allow_html=True)
-            
-            # Demographics
-            st.markdown('<div class="form-section"><div class="section-label">Demographics & Tumor Profile</div><div class="fields-grid">', unsafe_allow_html=True)
-            
-            col_gender, col_loc, col_hist, col_stage = st.columns(4)
-            with col_gender:
-                gender = st.selectbox("Gender", ["Male", "Female"], key="gender")
-            with col_loc:
-                location = st.selectbox("Tumor Location", 
-                    ["Frontal", "Parietal", "Temporal", "Occipital", "Cerebellum", "Brainstem"], key="location")
-            with col_hist:
-                histology = st.selectbox("Histology", 
-                    ["Glioma", "Meningioma", "Astrocytoma", "Pituitary", "Medulloblastoma"], key="histology")
-            with col_stage:
-                stage = st.selectbox("Stage", ["I", "II", "III", "IV"], key="stage")
-            
-            st.markdown('</div></div>', unsafe_allow_html=True)
-            
-            # Symptoms
-            st.markdown('<div class="form-section"><div class="section-label">Reported Symptoms</div><div class="fields-grid">', unsafe_allow_html=True)
-            
-            col_s1, col_s2, col_s3 = st.columns(3)
-            with col_s1:
-                symptom1 = st.selectbox("Symptom 1", 
-                    ["Headache", "Seizure", "Nausea", "Vision Loss", "Memory Loss", "None"], key="sym1")
-            with col_s2:
-                symptom2 = st.selectbox("Symptom 2", 
-                    ["None", "Weakness", "Speech Issues", "Balance Issues", "Fatigue", "Confusion"], key="sym2")
-            with col_s3:
-                symptom3 = st.selectbox("Symptom 3", 
-                    ["None", "Vomiting", "Numbness", "Personality Change", "Cognitive Decline"], key="sym3")
-            
-            st.markdown('</div></div>', unsafe_allow_html=True)
-            
-            # Treatment History
-            st.markdown('<div class="form-section"><div class="section-label">Treatment & History</div><div class="fields-grid">', unsafe_allow_html=True)
-            
-            col_rad, col_surg, col_chemo, col_fam = st.columns(4)
-            with col_rad:
-                radiation = st.selectbox("Radiation Treatment", ["No", "Yes"], key="rad")
-            with col_surg:
-                surgery = st.selectbox("Surgery Performed", ["No", "Yes"], key="surg")
-            with col_chemo:
-                chemo = st.selectbox("Chemotherapy", ["No", "Yes"], key="chemo")
-            with col_fam:
-                family = st.selectbox("Family History", ["No", "Yes"], key="fam")
-            
-            st.markdown('</div></div>', unsafe_allow_html=True)
-            
-            # Submit buttons
-            col_btn1, col_btn2, _ = st.columns([1, 1, 2])
-            with col_btn1:
-                predict_clicked = st.button("⚡ Run Classification", key="predict", use_container_width=True)
-            with col_btn2:
-                reset_clicked = st.button("Reset", key="reset", use_container_width=True)
-            
-            st.markdown('<span class="disclaimer">⚠️ For research & educational purposes only. Not a substitute for clinical diagnosis.</span>', unsafe_allow_html=True)
-            
-            # Result Card
-            if predict_clicked:
-                render_pipeline(step=6)  # Complete pipeline
+            with col1:
+                render_pipeline(step=0)
                 
-                # Simple prediction logic for demo
-                score = 0
-                score += min(tumor_size / 3.75, 4)
-                score += min(growth_rate / 3.33, 3)
-                stage_scores = {'I': 0, 'II': 0.5, 'III': 1.5, 'IV': 2.5}
-                score += stage_scores.get(stage, 0)
-                if age > 60:
-                    score += 0.8
-                elif age > 45:
-                    score += 0.4
-                if histology in ['Glioma', 'Medulloblastoma']:
-                    score += 1
-                elif histology == 'Astrocytoma':
-                    score += 0.5
-                
-                malignant_prob = min(score / 11, 0.97)
-                
-                # Model variations
-                np.random.seed(hash((age, tumor_size)) % 2**32)
-                knn_prob = np.clip(malignant_prob + np.random.uniform(-0.05, 0.05), 0.03, 0.97)
-                dt_prob = np.clip(malignant_prob + np.random.uniform(-0.06, 0.06), 0.03, 0.97)
-                rf_prob = np.clip(malignant_prob + np.random.uniform(-0.03, 0.03), 0.03, 0.97)
-                
-                ensemble = (knn_prob + dt_prob + rf_prob) / 3
-                is_malignant = ensemble >= 0.5
-                
-                # Display result
-                result_class = "malignant" if is_malignant else "benign"
-                result_icon = "⚠️" if is_malignant else "✅"
-                result_title = "Malignant" if is_malignant else "Benign"
-                result_sub = "High risk — recommend specialist referral" if is_malignant else "Low risk — continue routine monitoring"
-                
-                result_html = f'''
-                <div class="result-card visible {result_class}">
-                    <div class="result-header">
-                        <div class="result-icon">{result_icon}</div>
+                # Patient Input Form Card
+                st.markdown("""
+                <div class="card">
+                    <div class="card-header">
+                        <div class="icon">👤</div>
                         <div>
-                            <div class="result-title">{result_title}</div>
-                            <div class="result-sub">{result_sub}</div>
+                            <h2>Patient Data Input</h2>
+                            <p>Fill in all fields for highest accuracy prediction</p>
                         </div>
                     </div>
-                    <div class="result-body">
-                        <div style="font-family:'DM Mono',monospace;font-size:0.62rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;">
-                            Model Confidence Breakdown
+                    <div class="card-body">
+                """, unsafe_allow_html=True)
+                
+                # Numerical Features
+                st.markdown('<div class="form-section"><div class="section-label">Numerical Features</div><div class="fields-grid">', unsafe_allow_html=True)
+                
+                col_age, col_size, col_growth = st.columns(3)
+                with col_age:
+                    age = st.slider("Age", 1, 100, 45, key="age")
+                with col_size:
+                    tumor_size = st.slider("Tumor Size (cm)", 0.5, 15.0, 3.2, step=0.1, key="size")
+                with col_growth:
+                    growth_rate = st.slider("Growth Rate (mm/month)", 0.1, 10.0, 1.5, step=0.1, key="growth")
+                
+                st.markdown('</div></div>', unsafe_allow_html=True)
+                
+                # Demographics
+                st.markdown('<div class="form-section"><div class="section-label">Demographics & Tumor Profile</div><div class="fields-grid">', unsafe_allow_html=True)
+                
+                col_gender, col_loc, col_hist, col_stage = st.columns(4)
+                with col_gender:
+                    gender = st.selectbox("Gender", ["Male", "Female"], key="gender")
+                with col_loc:
+                    location = st.selectbox("Tumor Location", 
+                        ["Frontal", "Parietal", "Temporal", "Occipital", "Cerebellum", "Brainstem"], key="location")
+                with col_hist:
+                    histology = st.selectbox("Histology", 
+                        ["Glioma", "Meningioma", "Astrocytoma", "Pituitary", "Medulloblastoma"], key="histology")
+                with col_stage:
+                    stage = st.selectbox("Stage", ["I", "II", "III", "IV"], key="stage")
+                
+                st.markdown('</div></div>', unsafe_allow_html=True)
+                
+                # Symptoms
+                st.markdown('<div class="form-section"><div class="section-label">Reported Symptoms</div><div class="fields-grid">', unsafe_allow_html=True)
+                
+                col_s1, col_s2, col_s3 = st.columns(3)
+                with col_s1:
+                    symptom1 = st.selectbox("Symptom 1", 
+                        ["Headache", "Seizure", "Nausea", "Vision Loss", "Memory Loss", "None"], key="sym1")
+                with col_s2:
+                    symptom2 = st.selectbox("Symptom 2", 
+                        ["None", "Weakness", "Speech Issues", "Balance Issues", "Fatigue", "Confusion"], key="sym2")
+                with col_s3:
+                    symptom3 = st.selectbox("Symptom 3", 
+                        ["None", "Vomiting", "Numbness", "Personality Change", "Cognitive Decline"], key="sym3")
+                
+                st.markdown('</div></div>', unsafe_allow_html=True)
+                
+                # Treatment History
+                st.markdown('<div class="form-section"><div class="section-label">Treatment & History</div><div class="fields-grid">', unsafe_allow_html=True)
+                
+                col_rad, col_surg, col_chemo, col_fam = st.columns(4)
+                with col_rad:
+                    radiation = st.selectbox("Radiation Treatment", ["No", "Yes"], key="rad")
+                with col_surg:
+                    surgery = st.selectbox("Surgery Performed", ["No", "Yes"], key="surg")
+                with col_chemo:
+                    chemo = st.selectbox("Chemotherapy", ["No", "Yes"], key="chemo")
+                with col_fam:
+                    family = st.selectbox("Family History", ["No", "Yes"], key="fam")
+                
+                st.markdown('</div></div>', unsafe_allow_html=True)
+                
+                # Submit buttons
+                col_btn1, col_btn2, _ = st.columns([1, 1, 2])
+                with col_btn1:
+                    predict_clicked = st.button("⚡ Run Classification", key="predict", use_container_width=True)
+                with col_btn2:
+                    reset_clicked = st.button("Reset", key="reset", use_container_width=True)
+                
+                st.markdown('<span class="disclaimer">⚠️ For research & educational purposes only. Not a substitute for clinical diagnosis.</span>', unsafe_allow_html=True)
+                
+                # Result Card
+                if predict_clicked:
+                    render_pipeline(step=5)
+                    
+                    # Simple prediction logic for demo
+                    score = 0
+                    score += min(tumor_size / 3.75, 4)
+                    score += min(growth_rate / 3.33, 3)
+                    stage_scores = {'I': 0, 'II': 0.5, 'III': 1.5, 'IV': 2.5}
+                    score += stage_scores.get(stage, 0)
+                    if age > 60:
+                        score += 0.8
+                    elif age > 45:
+                        score += 0.4
+                    if histology in ['Glioma', 'Medulloblastoma']:
+                        score += 1
+                    elif histology == 'Astrocytoma':
+                        score += 0.5
+                    
+                    malignant_prob = min(score / 11, 0.97)
+                    
+                    # Model variations
+                    np.random.seed(hash((age, tumor_size, growth_rate)) % 2**32)
+                    knn_prob = np.clip(malignant_prob + np.random.uniform(-0.05, 0.05), 0.03, 0.97)
+                    dt_prob = np.clip(malignant_prob + np.random.uniform(-0.06, 0.06), 0.03, 0.97)
+                    rf_prob = np.clip(malignant_prob + np.random.uniform(-0.03, 0.03), 0.03, 0.97)
+                    
+                    ensemble = (knn_prob + dt_prob + rf_prob) / 3
+                    is_malignant = ensemble >= 0.5
+                    
+                    result_class = "malignant" if is_malignant else "benign"
+                    result_icon = "⚠️" if is_malignant else "✅"
+                    result_title = "Malignant" if is_malignant else "Benign"
+                    result_sub = "High risk — recommend specialist referral" if is_malignant else "Low risk — continue routine monitoring"
+                    
+                    result_html = f'''
+                    <div class="result-card visible {result_class}">
+                        <div class="result-header">
+                            <div class="result-icon">{result_icon}</div>
+                            <div>
+                                <div class="result-title">{result_title}</div>
+                                <div class="result-sub">{result_sub}</div>
+                            </div>
                         </div>
-                        
-                        <div class="confidence-row">
-                            <div class="conf-label">KNN</div>
-                            <div class="conf-bar"><div class="conf-fill" style="width:{knn_prob*100 if is_malignant else (1-knn_prob)*100}%"></div></div>
-                            <div class="conf-pct">{knn_prob*100 if is_malignant else (1-knn_prob)*100:.1f}%</div>
+                        <div class="result-body">
+                            <div style="font-family:'DM Mono',monospace;font-size:0.62rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;">
+                                Model Confidence Breakdown
+                            </div>
+                            
+                            <div class="confidence-row">
+                                <div class="conf-label">KNN</div>
+                                <div class="conf-bar"><div class="conf-fill" style="width:{knn_prob*100 if is_malignant else (1-knn_prob)*100}%"></div></div>
+                                <div class="conf-pct">{knn_prob*100 if is_malignant else (1-knn_prob)*100:.1f}%</div>
+                            </div>
+                            <div class="confidence-row">
+                                <div class="conf-label">Dec. Tree</div>
+                                <div class="conf-bar"><div class="conf-fill" style="width:{dt_prob*100 if is_malignant else (1-dt_prob)*100}%"></div></div>
+                                <div class="conf-pct">{dt_prob*100 if is_malignant else (1-dt_prob)*100:.1f}%</div>
+                            </div>
+                            <div class="confidence-row">
+                                <div class="conf-label">Rnd. Forest</div>
+                                <div class="conf-bar"><div class="conf-fill" style="width:{rf_prob*100 if is_malignant else (1-rf_prob)*100}%"></div></div>
+                                <div class="conf-pct">{rf_prob*100 if is_malignant else (1-rf_prob)*100:.1f}%</div>
+                            </div>
                         </div>
-                        <div class="confidence-row">
-                            <div class="conf-label">Dec. Tree</div>
-                            <div class="conf-bar"><div class="conf-fill" style="width:{dt_prob*100 if is_malignant else (1-dt_prob)*100}%"></div></div>
-                            <div class="conf-pct">{dt_prob*100 if is_malignant else (1-dt_prob)*100:.1f}%</div>
+                    </div>
+                    '''
+                    st.markdown(result_html, unsafe_allow_html=True)
+                
+                elif reset_clicked:
+                    st.rerun()
+                
+                else:
+                    st.markdown('<div class="result-card" id="result-card"></div>', unsafe_allow_html=True)
+                
+                st.markdown('</div></div>', unsafe_allow_html=True)
+            
+            with col2:
+                # Model Metrics Card
+                st.markdown("""
+                <div class="card">
+                    <div class="card-header">
+                        <div class="icon">📈</div>
+                        <div>
+                            <h2>Model Metrics</h2>
+                            <p>Performance comparison across all models</p>
                         </div>
-                        <div class="confidence-row">
-                            <div class="conf-label">Rnd. Forest</div>
-                            <div class="conf-bar"><div class="conf-fill" style="width:{rf_prob*100 if is_malignant else (1-rf_prob)*100}%"></div></div>
-                            <div class="conf-pct">{rf_prob*100 if is_malignant else (1-rf_prob)*100:.1f}%</div>
+                    </div>
+                    <div class="card-body">
+                        <table class="model-table">
+                            <thead>
+                                <tr>
+                                    <th>Model</th>
+                                    <th>Accuracy</th>
+                                    <th>F1</th>
+                                    <th>Precision</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="model-name">KNN (base)</span></td>
+                                    <td><div class="metric-bar-wrap"><div class="mini-bar"><div class="mini-fill" style="width:80%"></div></div><span class="mini-val">0.80</span></div></td>
+                                    <td>0.79</td>
+                                    <td>0.81</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="model-name">KNN (tuned)</span></td>
+                                    <td><div class="metric-bar-wrap"><div class="mini-bar"><div class="mini-fill" style="width:84%"></div></div><span class="mini-val">0.84</span></div></td>
+                                    <td>0.83</td>
+                                    <td>0.85</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="model-name">Dec. Tree (base)</span></td>
+                                    <td><div class="metric-bar-wrap"><div class="mini-bar"><div class="mini-fill" style="width:82%"></div></div><span class="mini-val">0.82</span></div></td>
+                                    <td>0.82</td>
+                                    <td>0.83</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="model-name">Dec. Tree (tuned)</span></td>
+                                    <td><div class="metric-bar-wrap"><div class="mini-bar"><div class="mini-fill" style="width:86%"></div></div><span class="mini-val">0.86</span></div></td>
+                                    <td>0.85</td>
+                                    <td>0.86</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="model-name">Rnd. Forest (base)</span></td>
+                                    <td><div class="metric-bar-wrap"><div class="mini-bar"><div class="mini-fill" style="width:88%"></div></div><span class="mini-val">0.88</span></div></td>
+                                    <td>0.87</td>
+                                    <td>0.89</td>
+                                </tr>
+                                <tr class="highlight-row">
+                                    <td><span class="model-name">Rnd. Forest (tuned)</span><span class="best-tag">BEST</span></td>
+                                    <td><div class="metric-bar-wrap"><div class="mini-bar"><div class="mini-fill" style="width:91%"></div></div><span class="mini-val">0.91</span></div></td>
+                                    <td>0.91</td>
+                                    <td>0.92</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Feature Importance Card
+                st.markdown("""
+                <div class="card">
+                    <div class="card-header">
+                        <div class="icon">🔑</div>
+                        <div>
+                            <h2>Feature Importance</h2>
+                            <p>Random Forest — top predictors</p>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="feature-list">
+                            <div class="feature-item">
+                                <span class="feat-name">Tumor Size</span>
+                                <div class="feat-bar-wrap"><div class="feat-bar"><div class="feat-fill" style="width:95%"></div></div></div>
+                                <span class="feat-imp">0.243</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feat-name">Growth Rate</span>
+                                <div class="feat-bar-wrap"><div class="feat-bar"><div class="feat-fill" style="width:82%"></div></div></div>
+                                <span class="feat-imp">0.198</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feat-name">Age</span>
+                                <div class="feat-bar-wrap"><div class="feat-bar"><div class="feat-fill" style="width:74%"></div></div></div>
+                                <span class="feat-imp">0.167</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feat-name">Histology</span>
+                                <div class="feat-bar-wrap"><div class="feat-bar"><div class="feat-fill" style="width:60%"></div></div></div>
+                                <span class="feat-imp">0.131</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feat-name">Stage</span>
+                                <div class="feat-bar-wrap"><div class="feat-bar"><div class="feat-fill" style="width:52%"></div></div></div>
+                                <span class="feat-imp">0.108</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feat-name">Location</span>
+                                <div class="feat-bar-wrap"><div class="feat-bar"><div class="feat-fill" style="width:41%"></div></div></div>
+                                <span class="feat-imp">0.079</span>
+                            </div>
+                            <div class="feature-item">
+                                <span class="feat-name">Symptoms</span>
+                                <div class="feat-bar-wrap"><div class="feat-bar"><div class="feat-fill" style="width:30%"></div></div></div>
+                                <span class="feat-imp">0.074</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-                '''
-                st.markdown(result_html, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
+                
+                # Dataset Info Card
+                benign_pct = (df['Tumor_Type'] == 'Benign').sum() / len(df) * 100
+                malignant_pct = (df['Tumor_Type'] == 'Malignant').sum() / len(df) * 100
+                
+                dataset_html = f"""
+                <div class="card">
+                    <div class="card-header">
+                        <div class="icon">🗃️</div>
+                        <div>
+                            <h2>Dataset Overview</h2>
+                            <p>tumor.csv — training set summary</p>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div class="stat-box" style="text-align:left;padding:12px 16px;">
+                                <span class="val" style="font-size:1.2rem;">80/20</span>
+                                <span class="lbl">Train / Test Split</span>
+                            </div>
+                            <div class="stat-box" style="text-align:left;padding:12px 16px;">
+                                <span class="val" style="font-size:1.2rem;">5-Fold</span>
+                                <span class="lbl">Cross-Validation</span>
+                            </div>
+                            <div class="stat-box" style="text-align:left;padding:12px 16px;">
+                                <span class="val" style="font-size:1.2rem;">20</span>
+                                <span class="lbl">Hyperparam Iters</span>
+                            </div>
+                            <div class="stat-box" style="text-align:left;padding:12px 16px;">
+                                <span class="val" style="font-size:1.2rem;">OHE</span>
+                                <span class="lbl">Encoding Method</span>
+                            </div>
+                        </div>
+
+                        <div style="margin-top:16px;padding:14px;background:var(--bg3);border-radius:var(--radius-sm);border:1px solid var(--border);">
+                            <div style="font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">Class Distribution</div>
+                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                                <div style="width:10px;height:10px;border-radius:50%;background:var(--green);flex-shrink:0;"></div>
+                                <span style="font-size:0.75rem;color:var(--text-dim);flex:1;">Benign</span>
+                                <div style="flex:2;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;">
+                                    <div style="width:{benign_pct:.0f}%;height:100%;background:var(--green);border-radius:3px;"></div>
+                                </div>
+                                <span style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--green);">{benign_pct:.0f}%</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <div style="width:10px;height:10px;border-radius:50%;background:var(--red);flex-shrink:0;"></div>
+                                <span style="font-size:0.75rem;color:var(--text-dim);flex:1;">Malignant</span>
+                                <div style="flex:2;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;">
+                                    <div style="width:{malignant_pct:.0f}%;height:100%;background:var(--red);border-radius:3px;"></div>
+                                </div>
+                                <span style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--red);">{malignant_pct:.0f}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                """
+                st.markdown(dataset_html, unsafe_allow_html=True)
+        
+        with tabs[1]:  # EDA Tab
+            st.markdown("""
+            <div class="card">
+                <div class="card-header">
+                    <div class="icon">📊</div>
+                    <div>
+                        <h2>Exploratory Data Analysis</h2>
+                        <p>Visualizing tumor dataset characteristics</p>
+                    </div>
+                </div>
+                <div class="card-body">
+            """, unsafe_allow_html=True)
             
-            elif reset_clicked:
-                st.rerun()
+            # Create all EDA plots
+            plots = create_eda_plots(df)
             
-            else:
-                st.markdown('<div class="result-card" id="result-card"></div>', unsafe_allow_html=True)
+            # Display plots in a grid
+            for i in range(0, len(plots), 2):
+                col1, col2 = st.columns(2)
+                with col1:
+                    if i < len(plots):
+                        st.markdown(f'<div class="graph-container"><div class="graph-title">{plots[i][0]}</div></div>', unsafe_allow_html=True)
+                        st.pyplot(plots[i][1])
+                with col2:
+                    if i + 1 < len(plots):
+                        st.markdown(f'<div class="graph-container"><div class="graph-title">{plots[i+1][0]}</div></div>', unsafe_allow_html=True)
+                        st.pyplot(plots[i+1][1])
             
             st.markdown('</div></div>', unsafe_allow_html=True)
         
-        with col2:
-            # Model Metrics Card
+        with tabs[2]:  # Model Comparison Tab
             st.markdown("""
             <div class="card">
                 <div class="card-header">
-                    <div class="icon">📈</div>
+                    <div class="icon">🤖</div>
                     <div>
-                        <h2>Model Metrics</h2>
-                        <p>Performance comparison across all models</p>
+                        <h2>Model Comparison</h2>
+                        <p>Performance metrics across all algorithms</p>
                     </div>
                 </div>
                 <div class="card-body">
-                    <table class="model-table">
-                        <thead>
-                            <tr>
-                                <th>Model</th>
-                                <th>Accuracy</th>
-                                <th>F1</th>
-                                <th>Precision</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><span class="model-name">KNN (base)</span></td>
-                                <td><div class="metric-bar-wrap"><div class="mini-bar"><div class="mini-fill" style="width:80%"></div></div><span class="mini-val">0.80</span></div></td>
-                                <td>0.79</td>
-                                <td>0.81</td>
-                            </tr>
-                            <tr>
-                                <td><span class="model-name">KNN (tuned)</span></td>
-                                <td><div class="metric-bar-wrap"><div class="mini-bar"><div class="mini-fill" style="width:84%"></div></div><span class="mini-val">0.84</span></div></td>
-                                <td>0.83</td>
-                                <td>0.85</td>
-                            </tr>
-                            <tr>
-                                <td><span class="model-name">Dec. Tree (base)</span></td>
-                                <td><div class="metric-bar-wrap"><div class="mini-bar"><div class="mini-fill" style="width:82%"></div></div><span class="mini-val">0.82</span></div></td>
-                                <td>0.82</td>
-                                <td>0.83</td>
-                            </tr>
-                            <tr>
-                                <td><span class="model-name">Dec. Tree (tuned)</span></td>
-                                <td><div class="metric-bar-wrap"><div class="mini-bar"><div class="mini-fill" style="width:86%"></div></div><span class="mini-val">0.86</span></div></td>
-                                <td>0.85</td>
-                                <td>0.86</td>
-                            </tr>
-                            <tr>
-                                <td><span class="model-name">Rnd. Forest (base)</span></td>
-                                <td><div class="metric-bar-wrap"><div class="mini-bar"><div class="mini-fill" style="width:88%"></div></div><span class="mini-val">0.88</span></div></td>
-                                <td>0.87</td>
-                                <td>0.89</td>
-                            </tr>
-                            <tr class="highlight-row">
-                                <td><span class="model-name">Rnd. Forest (tuned)</span><span class="best-tag">BEST</span></td>
-                                <td><div class="metric-bar-wrap"><div class="mini-bar"><div class="mini-fill" style="width:91%"></div></div><span class="mini-val">0.91</span></div></td>
-                                <td>0.91</td>
-                                <td>0.92</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
             """, unsafe_allow_html=True)
             
-            # Feature Importance Card
+            # Get model comparison results
+            results_df, confusion_matrices = create_model_comparison_plots(X_train, X_test, y_train, y_test)
+            
+            # Display metrics table
+            st.markdown('<div class="graph-title">Model Performance Metrics</div>', unsafe_allow_html=True)
+            
+            # Style the dataframe
+            styled_df = results_df.style.background_gradient(cmap='viridis', subset=['Accuracy', 'Precision', 'Recall', 'F1'])
+            st.dataframe(styled_df, use_container_width=True)
+            
+            # Display confusion matrices
+            st.markdown('<div class="graph-title" style="margin-top:30px;">Confusion Matrices</div>', unsafe_allow_html=True)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                for i, (name, cm) in enumerate(confusion_matrices[:3]):
+                    fig, ax = plt.subplots(figsize=(6, 4))
+                    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax,
+                               xticklabels=['Benign', 'Malignant'],
+                               yticklabels=['Benign', 'Malignant'])
+                    ax.set_title(f'{name}', color='white', fontsize=12)
+                    ax.set_xlabel('Predicted', color='var(--text-dim)')
+                    ax.set_ylabel('Actual', color='var(--text-dim)')
+                    ax.tick_params(colors='var(--text-dim)')
+                    fig.patch.set_facecolor('var(--bg3)')
+                    ax.set_facecolor('var(--bg3)')
+                    for spine in ax.spines.values():
+                        spine.set_color('var(--border)')
+                    st.pyplot(fig)
+            
+            with col2:
+                for i, (name, cm) in enumerate(confusion_matrices[3:]):
+                    fig, ax = plt.subplots(figsize=(6, 4))
+                    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax,
+                               xticklabels=['Benign', 'Malignant'],
+                               yticklabels=['Benign', 'Malignant'])
+                    ax.set_title(f'{name}', color='white', fontsize=12)
+                    ax.set_xlabel('Predicted', color='var(--text-dim)')
+                    ax.set_ylabel('Actual', color='var(--text-dim)')
+                    ax.tick_params(colors='var(--text-dim)')
+                    fig.patch.set_facecolor('var(--bg3)')
+                    ax.set_facecolor('var(--bg3)')
+                    for spine in ax.spines.values():
+                        spine.set_color('var(--border)')
+                    st.pyplot(fig)
+            
+            # Model comparison bar chart
+            st.markdown('<div class="graph-title" style="margin-top:30px;">Accuracy Comparison</div>', unsafe_allow_html=True)
+            
+            fig, ax = plt.subplots(figsize=(12, 6))
+            bars = ax.bar(results_df['Model'], results_df['Accuracy'], 
+                         color=[var('--teal') if 'tuned' in name.lower() else var('--teal-dim') for name in results_df['Model']])
+            ax.set_ylabel('Accuracy', color='var(--text-dim)')
+            ax.set_title('Model Accuracy Comparison', color='white', fontsize=14)
+            ax.tick_params(colors='var(--text-dim)', rotation=45)
+            ax.set_ylim([0, 1])
+            
+            # Add value labels on bars
+            for bar in bars:
+                height = bar.get_height()
+                ax.text(bar.get_x() + bar.get_width()/2., height,
+                       f'{height:.3f}', ha='center', va='bottom', color='white')
+            
+            fig.patch.set_facecolor('var(--bg3)')
+            ax.set_facecolor('var(--bg3)')
+            for spine in ax.spines.values():
+                spine.set_color('var(--border)')
+            
+            st.pyplot(fig)
+            
+            st.markdown('</div></div>', unsafe_allow_html=True)
+        
+        with tabs[3]:  # Data Overview Tab
             st.markdown("""
             <div class="card">
                 <div class="card-header">
-                    <div class="icon">🔑</div>
-                    <div>
-                        <h2>Feature Importance</h2>
-                        <p>Random Forest — top predictors</p>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="feature-list">
-                        <div class="feature-item">
-                            <span class="feat-name">Tumor Size</span>
-                            <div class="feat-bar-wrap"><div class="feat-bar"><div class="feat-fill" style="width:95%"></div></div></div>
-                            <span class="feat-imp">0.243</span>
-                        </div>
-                        <div class="feature-item">
-                            <span class="feat-name">Growth Rate</span>
-                            <div class="feat-bar-wrap"><div class="feat-bar"><div class="feat-fill" style="width:82%"></div></div></div>
-                            <span class="feat-imp">0.198</span>
-                        </div>
-                        <div class="feature-item">
-                            <span class="feat-name">Age</span>
-                            <div class="feat-bar-wrap"><div class="feat-bar"><div class="feat-fill" style="width:74%"></div></div></div>
-                            <span class="feat-imp">0.167</span>
-                        </div>
-                        <div class="feature-item">
-                            <span class="feat-name">Histology</span>
-                            <div class="feat-bar-wrap"><div class="feat-bar"><div class="feat-fill" style="width:60%"></div></div></div>
-                            <span class="feat-imp">0.131</span>
-                        </div>
-                        <div class="feature-item">
-                            <span class="feat-name">Stage</span>
-                            <div class="feat-bar-wrap"><div class="feat-bar"><div class="feat-fill" style="width:52%"></div></div></div>
-                            <span class="feat-imp">0.108</span>
-                        </div>
-                        <div class="feature-item">
-                            <span class="feat-name">Location</span>
-                            <div class="feat-bar-wrap"><div class="feat-bar"><div class="feat-fill" style="width:41%"></div></div></div>
-                            <span class="feat-imp">0.079</span>
-                        </div>
-                        <div class="feature-item">
-                            <span class="feat-name">Symptoms</span>
-                            <div class="feat-bar-wrap"><div class="feat-bar"><div class="feat-fill" style="width:30%"></div></div></div>
-                            <span class="feat-imp">0.074</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Dataset Info Card
-            benign_pct = (df['Tumor_Type'] == 0).sum() / len(df) * 100
-            malignant_pct = (df['Tumor_Type'] == 1).sum() / len(df) * 100
-            
-            dataset_html = f"""
-            <div class="card">
-                <div class="card-header">
-                    <div class="icon">🗃️</div>
+                    <div class="icon">📋</div>
                     <div>
                         <h2>Dataset Overview</h2>
-                        <p>tumor.csv — training set summary</p>
+                        <p>Raw data and statistics</p>
                     </div>
                 </div>
                 <div class="card-body">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                        <div class="stat-box" style="text-align:left;padding:12px 16px;">
-                            <span class="val" style="font-size:1.2rem;">80/20</span>
-                            <span class="lbl">Train / Test Split</span>
-                        </div>
-                        <div class="stat-box" style="text-align:left;padding:12px 16px;">
-                            <span class="val" style="font-size:1.2rem;">5-Fold</span>
-                            <span class="lbl">Cross-Validation</span>
-                        </div>
-                        <div class="stat-box" style="text-align:left;padding:12px 16px;">
-                            <span class="val" style="font-size:1.2rem;">20</span>
-                            <span class="lbl">Hyperparam Iters</span>
-                        </div>
-                        <div class="stat-box" style="text-align:left;padding:12px 16px;">
-                            <span class="val" style="font-size:1.2rem;">OHE</span>
-                            <span class="lbl">Encoding Method</span>
-                        </div>
-                    </div>
-
-                    <div style="margin-top:16px;padding:14px;background:var(--bg3);border-radius:var(--radius-sm);border:1px solid var(--border);">
-                        <div style="font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">Class Distribution</div>
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-                            <div style="width:10px;height:10px;border-radius:50%;background:var(--green);flex-shrink:0;"></div>
-                            <span style="font-size:0.75rem;color:var(--text-dim);flex:1;">Benign</span>
-                            <div style="flex:2;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;">
-                                <div style="width:{benign_pct:.0f}%;height:100%;background:var(--green);border-radius:3px;"></div>
-                            </div>
-                            <span style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--green);">{benign_pct:.0f}%</span>
-                        </div>
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <div style="width:10px;height:10px;border-radius:50%;background:var(--red);flex-shrink:0;"></div>
-                            <span style="font-size:0.75rem;color:var(--text-dim);flex:1;">Malignant</span>
-                            <div style="flex:2;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;">
-                                <div style="width:{malignant_pct:.0f}%;height:100%;background:var(--red);border-radius:3px;"></div>
-                            </div>
-                            <span style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--red);">{malignant_pct:.0f}%</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            """
-            st.markdown(dataset_html, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
+            
+            # Dataset statistics
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Total Samples", df.shape[0])
+            with col2:
+                st.metric("Features", df.shape[1])
+            with col3:
+                st.metric("Benign Cases", (df['Tumor_Type'] == 'Benign').sum())
+            with col4:
+                st.metric("Malignant Cases", (df['Tumor_Type'] == 'Malignant').sum())
+            
+            # Display raw data
+            st.markdown('<div class="graph-title" style="margin-top:20px;">Raw Data (First 10 Rows)</div>', unsafe_allow_html=True)
+            st.dataframe(df.head(10), use_container_width=True)
+            
+            # Display statistics
+            st.markdown('<div class="graph-title" style="margin-top:20px;">Statistical Summary</div>', unsafe_allow_html=True)
+            st.dataframe(df.describe(), use_container_width=True)
+            
+            # Missing values
+            st.markdown('<div class="graph-title" style="margin-top:20px;">Missing Values</div>', unsafe_allow_html=True)
+            missing_df = pd.DataFrame(df.isnull().sum(), columns=['Missing Values'])
+            missing_df['Percentage'] = (missing_df['Missing Values'] / len(df)) * 100
+            st.dataframe(missing_df, use_container_width=True)
+            
+            st.markdown('</div></div>', unsafe_allow_html=True)
         
         # Footer
         footer_html = """
@@ -1193,10 +1561,6 @@ def main():
         </footer>
         """
         st.markdown(footer_html, unsafe_allow_html=True)
-        
-    except Exception as e:
-        st.error(f"Error loading data: {e}")
-        st.info("Please ensure 'tumor.csv' is in the same directory as the app.")
 
 if __name__ == "__main__":
     main()

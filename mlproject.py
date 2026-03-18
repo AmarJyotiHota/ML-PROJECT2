@@ -1,5 +1,5 @@
 # ===============================
-# IPL ML ANALYTICS - PREMIUM STREAMLIT DASHBOARD
+# IPL ML ANALYTICS - PREMIUM STREAMLIT DASHBOARD (FIXED)
 # ===============================
 
 import streamlit as st
@@ -23,6 +23,14 @@ import base64
 from io import BytesIO
 import warnings
 warnings.filterwarnings('ignore')
+
+# Try to import statsmodels, but provide fallback if not available
+try:
+    import statsmodels.api as sm
+    STATSMODELS_AVAILABLE = True
+except ImportError:
+    STATSMODELS_AVAILABLE = False
+    st.warning("statsmodels not installed. Trendline functionality will be disabled. Install with: pip install statsmodels")
 
 # ===============================
 # PAGE CONFIGURATION
@@ -566,6 +574,8 @@ def init_session_state():
         st.session_state.feature_importance = None
     if 'training_history' not in st.session_state:
         st.session_state.training_history = []
+    if 'statsmodels_available' not in st.session_state:
+        st.session_state.statsmodels_available = STATSMODELS_AVAILABLE
 
 # ===============================
 # DATA PROCESSING FUNCTIONS
@@ -928,6 +938,10 @@ def main():
     load_css()
     render_header()
     
+    # Show statsmodels warning if not available
+    if not st.session_state.statsmodels_available:
+        st.sidebar.warning("⚠️ For trendlines in scatter plots, install: pip install statsmodels")
+    
     # Sidebar
     with st.sidebar:
         st.markdown("""
@@ -1186,11 +1200,17 @@ def render_eda():
             with col2:
                 y_col = st.selectbox("Y-axis", numeric_cols, index=min(1, len(numeric_cols)-1))
             
-            # Scatter plot
-            fig = px.scatter(df, x=x_col, y=y_col,
-                            title=f'{x_col} vs {y_col}',
-                            trendline="ols",
-                            color_discrete_sequence=['#FF6B35'])
+            # Scatter plot with conditional trendline
+            if st.session_state.statsmodels_available:
+                fig = px.scatter(df, x=x_col, y=y_col,
+                                title=f'{x_col} vs {y_col}',
+                                trendline="ols",
+                                color_discrete_sequence=['#FF6B35'])
+            else:
+                fig = px.scatter(df, x=x_col, y=y_col,
+                                title=f'{x_col} vs {y_col} (trendline unavailable)',
+                                color_discrete_sequence=['#FF6B35'])
+            
             fig.update_layout(template='plotly_dark',
                             paper_bgcolor='rgba(0,0,0,0)',
                             plot_bgcolor='rgba(0,0,0,0)')
